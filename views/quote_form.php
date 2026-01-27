@@ -1,3 +1,17 @@
+
+<?php
+    // Ensure variables are defined to avoid warnings
+    $q_titulo = $q_titulo ?? '';
+    $q_sol_nome = $q_sol_nome ?? '';
+    $q_sol_cnpj = $q_sol_cnpj ?? '';
+    $q_emp1 = $q_emp1 ?? '';
+    $q_emp2 = $q_emp2 ?? '';
+    $q_emp3 = $q_emp3 ?? '';
+    $q_var = $q_var ?? '10';
+    $q_tpl1 = $q_tpl1 ?? '1';
+    $q_tpl2 = $q_tpl2 ?? '2';
+    $q_tpl3 = $q_tpl3 ?? '3';
+?>
 <h2>Novo Orçamento</h2>
 
 <form action="index.php?page=orcamentos" method="POST" id="quoteForm">

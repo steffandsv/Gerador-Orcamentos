@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         clearTimeout(debounceTimer);
         
-        if (term.length < 2) {
+        if (term.length < 3) {
             listContainer.style.display = 'none';
             return;
         }
