@@ -1,6 +1,6 @@
 <?php
 // Load credentials
-$host = 'srv466.hstgr.io';
+$host = 'localhost';
 $dbname = 'u225637494_fiomb';
 $user = 'u225637494_fiomb';
 $pass = '20SKDMasx';
