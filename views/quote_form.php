@@ -27,7 +27,7 @@
                         <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['nome']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <label style="margin-top: 10px;">Modelo de Layout:</label>
+                <label for="template1_id" style="margin-top: 10px;">Modelo de Layout:</label>
                 <input type="hidden" name="template1_id" id="template1_id" value="1">
                 <button type="button" class="btn btn-secondary select-template-btn" data-target="template1_id">Modelo 1 (Selecionado)</button>
             </div>
@@ -39,7 +39,7 @@
                         <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['nome']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <label style="margin-top: 10px;">Modelo de Layout:</label>
+                <label for="template2_id" style="margin-top: 10px;">Modelo de Layout:</label>
                 <input type="hidden" name="template2_id" id="template2_id" value="2">
                 <button type="button" class="btn btn-secondary select-template-btn" data-target="template2_id">Modelo 2 (Selecionado)</button>
             </div>
@@ -51,7 +51,7 @@
                         <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['nome']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <label style="margin-top: 10px;">Modelo de Layout:</label>
+                <label for="template3_id" style="margin-top: 10px;">Modelo de Layout:</label>
                 <input type="hidden" name="template3_id" id="template3_id" value="3">
                 <button type="button" class="btn btn-secondary select-template-btn" data-target="template3_id">Modelo 3 (Selecionado)</button>
             </div>
@@ -90,7 +90,7 @@
         </div>
 
         <div id="manualSection" style="margin-top:20px;">
-            <table id="itemsTable">
+            <table id="itemsTable" class="premium-table">
                 <thead>
                     <tr>
                         <th style="width: 40%;">Descrição</th>
@@ -134,7 +134,7 @@
     </div>
 </div>
 
-<script src="js/script.js"></script>
+<script src="js/script.js?v=<?= time() ?>"></script>
 <script>
     // --- Solicitante Logic implemented directly here or can be moved to script.js if needed ---
 

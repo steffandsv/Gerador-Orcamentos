@@ -1,211 +1,219 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const tableBody = document.querySelector('#itemsTable tbody');
-    const addItemBtn = document.getElementById('addItemBtn');
-    let itemIndex = 0;
-
-    function createRow(desc = '', unit = 'UN', qty = '', price = '') {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>
-                <input type="text" name="items[${itemIndex}][descricao]" required value="${desc}" placeholder="Item..." style="margin-bottom:0;">
-            </td>
-            <td>
-                <input type="text" name="items[${itemIndex}][unidade]" required value="${unit}" placeholder="UN" style="margin-bottom:0; text-align:center;">
-            </td>
-            <td>
-                <input type="number" name="items[${itemIndex}][quantidade]" required value="${qty}" step="0.01" min="0.01" placeholder="1" style="margin-bottom:0;">
-            </td>
-            <td>
-                <input type="number" name="items[${itemIndex}][preco_unitario]" required value="${price}" step="0.01" min="0.01" placeholder="0.00" style="margin-bottom:0;">
-            </td>
-            <td>
-                <button type="button" class="btn btn-small btn-danger remove-row">X</button>
-            </td>
-        `;
-        tableBody.appendChild(tr);
-        itemIndex++;
-    }
-
-    // Add first row by default
-    createRow();
-
-    addItemBtn.addEventListener('click', () => createRow());
-
-    tableBody.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-row')) {
-            e.target.closest('tr').remove();
+    // Helper for SweetAlert or Fallback
+    const showAlert = (message, title = 'Atenção', icon = 'info') => {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ title, text: message, icon, confirmButtonColor: '#3b82f6' });
+        } else {
+            alert(message);
         }
-    });
+    };
 
-    // Simple validation before submit
-    document.getElementById('quoteForm').addEventListener('submit', function(e) {
-        const rows = tableBody.querySelectorAll('tr');
-        if (rows.length === 0) {
-            e.preventDefault();
-            alert('Adicione pelo menos um item ao orçamento.');
-        }
-    });
+    // 1. Items Table Logic
+    try {
+        const tableBody = document.querySelector('#itemsTable tbody');
+        const addItemBtn = document.getElementById('addItemBtn');
+        let itemIndex = 0;
 
-    // CSV Logic
-    const downloadTemplateBtn = document.getElementById('downloadTemplate');
-    const importBtn = document.getElementById('importBtn');
-    const csvInput = document.getElementById('csvInput');
-    const csvFile = document.getElementById('csvFile');
+        // If table exists, proceed
+        if (tableBody && addItemBtn) {
+            window.createRow = function(desc = '', unit = 'UN', qty = '', price = '') {
+                // Ensure values are safe
+                unit = unit || 'UN';
+                qty = qty || '1';
+                price = price || '0.00';
 
-    if (downloadTemplateBtn) {
-        downloadTemplateBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const csvContent = "Descrição;Unidade;Quantidade;Preço Unitário\nCaneta Azul;UN;100;1.50\nPapel A4;CX;50;25.00";
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute("href", url);
-                link.setAttribute("download", "modelo_itens.csv");
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <input type="text" name="items[${itemIndex}][descricao]" value="${desc}" placeholder="Descrição do item" class="form-control" required style="width:100%">
+                    </td>
+                    <td>
+                        <input type="text" name="items[${itemIndex}][unidade]" value="${unit}" placeholder="UN" class="form-control" required style="width:100%; text-align:center;">
+                    </td>
+                    <td>
+                        <input type="number" name="items[${itemIndex}][quantidade]" value="${qty}" step="0.01" min="0.01" placeholder="1" class="form-control" required style="width:100%">
+                    </td>
+                    <td>
+                        <input type="number" name="items[${itemIndex}][preco_unitario]" value="${price}" step="0.01" min="0.01" placeholder="0.00" class="form-control" required style="width:100%">
+                    </td>
+                    <td style="text-align:center;">
+                        <button type="button" class="btn btn-small btn-danger remove-row" title="Remover Item">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+                itemIndex++;
+            };
+
+            // Initial row
+            if (tableBody.children.length === 0) createRow();
+
+            addItemBtn.addEventListener('click', () => createRow());
+
+            tableBody.addEventListener('click', function(e) {
+                if (e.target.closest('.remove-row')) {
+                    e.target.closest('tr').remove();
+                }
+            });
+
+            // Form Submit Validation
+            const form = document.getElementById('quoteForm');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const rows = tableBody.querySelectorAll('tr');
+                    if (rows.length === 0) {
+                        e.preventDefault();
+                        showAlert('Adicione pelo menos um item ao orçamento.', 'Erro', 'error');
+                    }
+                });
             }
-        });
+        }
+    } catch (e) {
+        console.error("Error in Items Table Loop:", e);
     }
 
-    if (importBtn) {
-        function parseCSV(text) {
-            const lines = text.split(/\r\n|\n/);
-            // Detect delimiter: count semicolons vs commas in first line
-            const firstLine = lines[0] || '';
-            const semicolonCount = (firstLine.match(/;/g) || []).length;
-            const commaCount = (firstLine.match(/,/g) || []).length;
-            const delimiter = semicolonCount >= commaCount ? ';' : ',';
-    
-            let addedCount = 0;
-    
-            lines.forEach((line, index) => {
-                if (!line.trim()) return;
-                // Skip header if it looks like header
-                if (index === 0 && (line.toLowerCase().includes('desc') || line.toLowerCase().includes('qty') || line.toLowerCase().includes('quant') || line.toLowerCase().includes('pre'))) {
+    // 2. CSV Import Logic
+    try {
+        const importBtn = document.getElementById('importBtn');
+        const csvInput = document.getElementById('csvInput');
+        const csvFile = document.getElementById('csvFile');
+        const tableBody = document.querySelector('#itemsTable tbody'); // Re-select to be safe
+
+        if (importBtn && (csvInput || csvFile)) {
+             importBtn.addEventListener('click', function() {
+                let csvText = '';
+                
+                if (csvFile && csvFile.files.length > 0) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) { processImportContent(e.target.result); };
+                    reader.readAsText(csvFile.files[0]);
+                    return;
+                } else if (csvInput && csvInput.value.trim() !== "") {
+                    csvText = csvInput.value;
+                } else {
+                    showAlert('Cole o CSV ou selecione um arquivo.', 'Nenhum dado', 'warning');
                     return;
                 }
-    
-                const parts = line.split(delimiter);
-                if (parts.length >= 1) {
-                    const desc = parts[0].trim().replace(/^"|"$/g, '');
-                    let unit = 'UN';
-                    let qty = '1';
-                    let price = '0';
+                processImportContent(csvText);
+            });
 
-                    if (parts.length >= 4) {
-                        // Desc; Unit; Qty; Price
-                        unit = parts[1].trim().replace(/^"|"$/g, '');
-                        qty = parts[2].trim().replace(/^"|"$/g, '');
-                        price = parts[3].trim().replace(/^"|"$/g, '');
-                    } else if (parts.length === 3) {
-                        // Desc; Qty; Price
-                        // Try to detect if the second col is Unit or Qty. Qty is usually numeric.
-                        const secondCol = parts[1].trim().replace(/^"|"$/g, '');
-                        if (isNaN(parseFloat(secondCol.replace(',', '.')))) {
-                             // It's likely a unit
-                             unit = secondCol;
-                             qty = parts[2].trim().replace(/^"|"$/g, ''); // Then 3rd must be Price? Wait if 3 cols and 2nd is unit, where is Qty?
-                             // 3 cols logic usually: Desc; Qty; Price OR Desc; Unit; Qty (missing price?)
-                             // Let's assume standard 3 cols is Desc; Qty; Price as per request.
-                        } else {
-                             qty = secondCol;
-                             price = parts[2].trim().replace(/^"|"$/g, '');
-                        }
-                    } else if (parts.length === 2) {
-                         qty = parts[1].trim().replace(/^"|"$/g, '');
+            function processImportContent(text) {
+                if (!window.createRow || !tableBody) return;
+                
+                tableBody.innerHTML = '';
+                // itemIndex global reset? We used closure variable itemIndex.
+                // We can't easily reset closure variable unless we expose reset.
+                // Just continue incrementing, keys will be unique enough.
+                
+                let addedCount = 0;
+                const lines = text.split(/\r\n|\n/);
+                const firstLine = lines[0] || '';
+                const semicolonCount = (firstLine.match(/;/g) || []).length;
+                const commaCount = (firstLine.match(/,/g) || []).length;
+                const delimiter = semicolonCount >= commaCount ? ';' : ',';
+
+                lines.forEach((line, index) => {
+                    if (!line.trim()) return;
+                    // Header check
+                    const lineLower = line.toLowerCase();
+                    if (index === 0 && (lineLower.includes('desc') || lineLower.includes('qty') || lineLower.includes('pre') || lineLower.includes('unid'))) {
+                         return;
                     }
                     
-                    // Handle comma as decimal separator
-                    if (qty.includes(',') && !qty.includes('.')) qty = qty.replace(',', '.');
-                    if (price.includes(',') && !price.includes('.')) price = price.replace(',', '.');
-                    
-                    // Cleanup symbols like R$ or $
-                    price = price.replace(/[^\d.]/g, '');
-    
-                    createRow(desc, unit, qty, price);
-                    addedCount++;
+                    const parts = line.split(delimiter);
+                    if (parts.length >= 2) {
+                        let desc = parts[0].trim().replace(/^"|"$/g, '');
+                        let unit = 'UN', qty = '1', price = '0';
+
+                        // Heuristic Layout detection
+                        if (parts.length >= 4) { // Desc; Unit; Qty; Price
+                            unit = parts[1]; qty = parts[2]; price = parts[3];
+                        } else if (parts.length === 3) { 
+                             // Desc; Qty; Price OR Desc; Unit; Qty
+                             // Check 2nd col for number
+                             let p2 = parts[1].trim();
+                             if (isNaN(parseFloat(p2.replace(',','.')))) {
+                                 unit = p2; qty = parts[2]; // Desc; Unit; Qty (No price?)
+                             } else {
+                                 qty = p2; price = parts[2]; // Desc; Qty; Price
+                             }
+                        } else {
+                            qty = parts[1]; // Desc; Qty
+                        }
+
+                        // Cleanups
+                        if (typeof unit === 'string') unit = unit.replace(/^"|"$/g, '').trim();
+                        if (typeof qty === 'string') qty = qty.replace(/^"|"$/g, '').replace(',', '.').trim();
+                        if (typeof price === 'string') price = price.replace(/^"|"$/g, '').replace(/[^\d.,]/g, '').replace(',', '.').trim();
+
+                        createRow(desc, unit, qty, price);
+                        addedCount++;
+                    }
+                });
+
+                if (addedCount > 0) {
+                    const manualRadio = document.getElementById('mode_manual');
+                    if (manualRadio) {
+                        manualRadio.checked = true;
+                        // Trigger change
+                        toggleItemMode(); // function defined in HTML script
+                    }
+                    showAlert(`${addedCount} itens importados!`, 'Sucesso', 'success');
+                } else {
+                    showAlert('Nenhum item válido identificado no CSV.', 'Erro', 'error');
                 }
-            });
-    
-            if (addedCount > 0) {
-                alert(addedCount + ' itens importados com sucesso!');
-            } else {
-                alert('Nenhum item válido encontrado.');
             }
         }
-
-        importBtn.addEventListener('click', function() {
-            let csvText = '';
-            if (csvFile.files.length > 0) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    processImport(e.target.result);
-                };
-                reader.readAsText(csvFile.files[0]);
-                return; // processing async
-            } else if (csvInput.value.trim() !== "") {
-                csvText = csvInput.value;
-            } else {
-                alert('Por favor, cole o CSV ou selecione um arquivo.');
-                return;
-            }
-            processImport(csvText);
-        });
-
-        function processImport(text) {
-             // Clear existing items
-             tableBody.innerHTML = '';
-             itemIndex = 0;
-             
-             parseCSV(text);
-             
-             // Switch to Manual Mode
-             const manualRadio = document.getElementById('mode_manual');
-             if (manualRadio) {
-                 manualRadio.checked = true;
-                 // Trigger change event to update UI
-                 const event = new Event('change');
-                 manualRadio.dispatchEvent(event);
-             }
-        }
+    } catch (e) {
+        console.error("Error in CSV Logic:", e);
     }
 
-    // Modal Logic
-    const modal = document.getElementById('templateModal');
-    const closeBtn = document.querySelector('.close-modal');
-    let currentTargetInputId = null;
+    // 3. Modal Logic
+    try {
+        const modal = document.getElementById('templateModal');
+        const closeBtn = document.querySelector('.close-modal');
+        const buttons = document.querySelectorAll('.select-template-btn');
 
-    if (modal) {
-        document.querySelectorAll('.select-template-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                currentTargetInputId = this.dataset.target;
-                modal.style.display = 'block';
+        if (modal && buttons.length > 0) {
+            let currentTargetInputId = null;
+
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault(); // Just in case
+                    currentTargetInputId = this.dataset.target;
+                    modal.style.display = 'block';
+                });
             });
-        });
 
-        closeBtn.addEventListener('click', () => modal.style.display = 'none');
-        
-        window.addEventListener('click', (e) => {
-            if (e.target === modal) modal.style.display = 'none';
-        });
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+            }
 
-        document.querySelectorAll('.template-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const templateId = this.dataset.id;
-                if (currentTargetInputId) {
-                    const input = document.getElementById(currentTargetInputId);
-                    if (input) {
-                        input.value = templateId;
-                        // Update button text
-                        const btn = document.querySelector(`button[data-target="${currentTargetInputId}"]`);
-                        if (btn) btn.textContent = `Modelo ${templateId} (Selecionado)`;
+            window.addEventListener('click', (e) => {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+
+            // Template Item Click
+            const templateItems = document.querySelectorAll('.template-item');
+            templateItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const templateId = this.dataset.id;
+                    if (currentTargetInputId) {
+                         const input = document.getElementById(currentTargetInputId);
+                         if (input) input.value = templateId;
+                         
+                         // Update Button Text
+                         const btn = document.querySelector(`button[data-target="${currentTargetInputId}"]`);
+                         if (btn) btn.innerHTML = `Modelo ${templateId} (Selecionado) <i class="fas fa-check"></i>`;
                     }
-                }
-                modal.style.display = 'none';
+                    modal.style.display = 'none';
+                });
             });
-        });
+        } else {
+            console.warn("Modal elements not found");
+        }
+    } catch (e) {
+        console.error("Error in Modal Logic:", e);
     }
 });

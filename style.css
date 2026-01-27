@@ -1,17 +1,18 @@
 :root {
-    --primary: #1a1a1a;
-    --accent: #2563eb; /* Modern Blue */
-    --accent-hover: #1d4ed8;
-    --bg: #f8fafc;
+    --primary: #0f172a;
+    --accent: #3b82f6; /* Vivid Blue */
+    --accent-hover: #2563eb;
+    --bg: #f1f5f9;
     --white: #ffffff;
     --border: #e2e8f0;
     --text-muted: #64748b;
-    --radius: 8px;
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --radius: 12px;
+    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Inter', sans-serif;
 }
-
 body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body);
     margin: 0;
     padding: 0;
     background: var(--bg);
@@ -177,26 +178,59 @@ nav a {
 }
 
 /* Table Styles */
-table {
+/* Premium Table */
+.premium-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     margin-bottom: 20px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
 }
 
-th, td {
-    padding: 12px 15px;
-    border-bottom: 1px solid var(--border);
-    text-align: left;
-}
-
-th {
+.premium-table th {
     background: #f8fafc;
     color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
 }
+
+.premium-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    background: white;
+}
+
+.premium-table tr:last-child td {
+    border-bottom: none;
+}
+
+.premium-table input {
+    border: 1px solid transparent;
+    background: transparent;
+    margin-bottom: 0;
+    padding: 8px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+}
+
+.premium-table input:focus {
+    background: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.premium-table input:hover {
+    background: #f8fafc;
+}
+
+
 
 /* Helper Buttons */
 .btn-small {
