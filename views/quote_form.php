@@ -1,25 +1,48 @@
-
 <?php
-    // Ensure variables are defined to avoid warnings
-    $q_titulo = $q_titulo ?? '';
-    $q_sol_nome = $q_sol_nome ?? '';
-    $q_sol_cnpj = $q_sol_cnpj ?? '';
-    $q_emp1 = $q_emp1 ?? '';
-    $q_emp2 = $q_emp2 ?? '';
-    $q_emp3 = $q_emp3 ?? '';
-    $q_var = $q_var ?? '10';
-    $q_tpl1 = $q_tpl1 ?? '1';
-    $q_tpl2 = $q_tpl2 ?? '2';
-    $q_tpl3 = $q_tpl3 ?? '3';
+    // Populate variables from Edit Data if available, otherwise defaults
+    if (isset($quote_edit) && $quote_edit) {
+        $q_id = $quote_edit['id'];
+        $q_titulo = $quote_edit['titulo'];
+        $q_sol_nome = $quote_edit['solicitante_nome'];
+        $q_sol_cnpj = $quote_edit['solicitante_cnpj'];
+        $q_emp1 = $quote_edit['empresa1_id'];
+        $q_emp2 = $quote_edit['empresa2_id'];
+        $q_emp3 = $quote_edit['empresa3_id'];
+        $q_var = $quote_edit['variacao_maxima'];
+        $q_tpl1 = $quote_edit['template1_id'];
+        $q_tpl2 = $quote_edit['template2_id'];
+        $q_tpl3 = $quote_edit['template3_id'];
+        
+        // Prepare items for JS
+        $items_json = json_encode($items_edit);
+        $page_title = "Editar Orçamento #$q_id";
+    } else {
+        $q_id = '';
+        $q_titulo = '';
+        $q_sol_nome = '';
+        $q_sol_cnpj = '';
+        $q_emp1 = '';
+        $q_emp2 = '';
+        $q_emp3 = '';
+        $q_var = '10';
+        $q_tpl1 = '1';
+        $q_tpl2 = '2';
+        $q_tpl3 = '3';
+        $items_json = '[]';
+        $page_title = "Novo Orçamento";
+    }
 ?>
-<h2>Novo Orçamento</h2>
+<h2><?= $page_title ?></h2>
 
 <form action="index.php?page=orcamentos" method="POST" id="quoteForm">
     <input type="hidden" name="action" value="save_quote">
+    <?php if ($q_id): ?>
+        <input type="hidden" name="quote_id" value="<?= $q_id ?>">
+    <?php endif; ?>
 
     <div class="card">
         <label for="titulo">Título do Orçamento:</label>
-        <input type="text" id="titulo" name="titulo" required placeholder="Ex: Material de Escritório - Julho/2024">
+        <input type="text" id="titulo" name="titulo" value="<?= htmlspecialchars($q_titulo) ?>" required placeholder="Ex: Material de Escritório - Julho/2024">
         
         <div class="flex-row" style="margin-top: 15px;">
             <div class="flex-col">
@@ -31,7 +54,7 @@
             </div>
              <div class="flex-col">
                 <label for="solicitante_cnpj">CNPJ do Solicitante:</label>
-                <input type="text" id="solicitante_cnpj" name="solicitante_cnpj" required placeholder="Ex: 00.000.000/0001-00">
+                <input type="text" id="solicitante_cnpj" name="solicitante_cnpj" value="<?= htmlspecialchars($q_sol_cnpj) ?>" required placeholder="Ex: 00.000.000/0001-00">
             </div>
         </div>
 
@@ -41,41 +64,41 @@
                 <select name="empresa1_id" id="empresa1_id" class="company-select" required>
                     <option value="">Selecione...</option>
                     <?php foreach ($empresas as $emp): ?>
-                        <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['nome']) ?></option>
+                        <option value="<?= $emp['id'] ?>" <?= $emp['id'] == $q_emp1 ? 'selected' : '' ?>><?= htmlspecialchars($emp['nome']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <label for="template1_id" style="margin-top: 10px;">Modelo de Layout:</label>
-                <input type="hidden" name="template1_id" id="template1_id" value="1">
-                <button type="button" class="btn btn-secondary select-template-btn" data-target="template1_id">Modelo 1 (Selecionado)</button>
+                <input type="hidden" name="template1_id" id="template1_id" value="<?= $q_tpl1 ?>">
+                <button type="button" class="btn btn-secondary select-template-btn" data-target="template1_id">Modelo <?= $q_tpl1 ?> (Selecionado)</button>
             </div>
             <div class="flex-col">
                 <label for="empresa2_id">Empresa 2 (Orçamento Superior):</label>
                 <select name="empresa2_id" id="empresa2_id" class="company-select" required>
                     <option value="">Selecione...</option>
                     <?php foreach ($empresas as $emp): ?>
-                        <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['nome']) ?></option>
+                        <option value="<?= $emp['id'] ?>" <?= $emp['id'] == $q_emp2 ? 'selected' : '' ?>><?= htmlspecialchars($emp['nome']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <label for="template2_id" style="margin-top: 10px;">Modelo de Layout:</label>
-                <input type="hidden" name="template2_id" id="template2_id" value="2">
-                <button type="button" class="btn btn-secondary select-template-btn" data-target="template2_id">Modelo 2 (Selecionado)</button>
+                <input type="hidden" name="template2_id" id="template2_id" value="<?= $q_tpl2 ?>">
+                <button type="button" class="btn btn-secondary select-template-btn" data-target="template2_id">Modelo <?= $q_tpl2 ?> (Selecionado)</button>
             </div>
             <div class="flex-col">
                 <label for="empresa3_id">Empresa 3 (Orçamento Superior):</label>
                 <select name="empresa3_id" id="empresa3_id" class="company-select" required>
                     <option value="">Selecione...</option>
                     <?php foreach ($empresas as $emp): ?>
-                        <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['nome']) ?></option>
+                        <option value="<?= $emp['id'] ?>" <?= $emp['id'] == $q_emp3 ? 'selected' : '' ?>><?= htmlspecialchars($emp['nome']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <label for="template3_id" style="margin-top: 10px;">Modelo de Layout:</label>
-                <input type="hidden" name="template3_id" id="template3_id" value="3">
-                <button type="button" class="btn btn-secondary select-template-btn" data-target="template3_id">Modelo 3 (Selecionado)</button>
+                <input type="hidden" name="template3_id" id="template3_id" value="<?= $q_tpl3 ?>">
+                <button type="button" class="btn btn-secondary select-template-btn" data-target="template3_id">Modelo <?= $q_tpl3 ?> (Selecionado)</button>
             </div>
         </div>
 
         <label for="variacao_maxima" style="margin-top: 15px;">Variação Máxima (%) para os outros orçamentos:</label>
-        <input type="number" name="variacao_maxima" value="10" min="1" max="100" required step="0.1">
+        <input type="number" name="variacao_maxima" value="<?= $q_var ?>" min="1" max="100" required step="0.1">
         <small style="display:block; margin-top:-10px; margin-bottom:15px; color:#666;">
             Os preços das empresas 2 e 3 serão aleatoriamente maiores entre 1% e X% em relação à vencedora.
         </small>
@@ -220,4 +243,43 @@
     // Run once on load
     updateCompanyOptions();
 
+</script>
+<script src="js/autocomplete.js?v=<?= time() ?>"></script>
+<script>
+    // --- Populate Items on Edit ---
+    var initialItems = <?= $items_json ?>;
+    
+    // We need to wait for script.js to load to have access to createRow.
+    // Since script.js is included above, we can just use a DOMContentLoaded listener, 
+    // but deeper down to be safe.
+    document.addEventListener('DOMContentLoaded', function() {
+        if (initialItems && initialItems.length > 0) {
+            // A small timeout to ensure createRow from script.js (which also waits for DOMContentLoaded) is ready.
+            setTimeout(() => {
+                if (typeof window.createRow === 'function') {
+                    // Clear initial empty row if exists
+                    const tbody = document.querySelector('#itemsTable tbody');
+                    if (tbody) tbody.innerHTML = ''; 
+
+                    initialItems.forEach(item => {
+                        window.createRow(
+                            item.descricao, 
+                            item.unidade, 
+                            item.quantidade, 
+                            item.preco_unitario
+                        );
+                    });
+                    
+                    // Switch to Manual mode to ensure table is main focus (though it is always visible)
+                    const manualRadio = document.getElementById('mode_manual');
+                    if (manualRadio) {
+                        manualRadio.checked = true;
+                        if (typeof toggleItemMode === 'function') toggleItemMode();
+                    }
+                } else {
+                    console.error("createRow function not found!");
+                }
+            }, 200);
+        }
+    });
 </script>

@@ -53,6 +53,14 @@ if ($page === 'print') {
     }
     unset($item); // Break reference
 
+    // Display ID Offset Logic
+    $offset = 0;
+    if ($comp_idx == 1) $offset = 50;
+    elseif ($comp_idx == 2) $offset = 150;
+    elseif ($comp_idx == 3) $offset = 280;
+    
+    $quote['id'] = $quote['id'] + $offset;
+
     // Select Layout based on Company Index (1, 2, 3)
     $tpl_field = 'template' . $comp_idx . '_id';
     $template_id = $quote[$tpl_field] ?? $comp_idx;
