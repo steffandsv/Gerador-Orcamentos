@@ -28,7 +28,21 @@
                 <td><?= htmlspecialchars($orc['empresa_vencedora'] ?? 'N/A') ?></td>
                 <td><?= $orc['variacao_maxima'] ?>%</td>
                 <td>
-                    <button onclick="generateQuotes(<?= $orc['id'] ?>)" class="btn btn-small">Gerar Orçamentos (3)</button>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="generateQuotes(<?= $orc['id'] ?>)" class="btn btn-small" title="Gerar PDF">
+                            <i class="fas fa-print"></i>
+                        </button>
+                        <a href="index.php?page=orcamento_form&id=<?= $orc['id'] ?>" class="btn btn-small btn-secondary" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form action="index.php" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este orçamento?');" style="margin:0;">
+                            <input type="hidden" name="action" value="delete_quote">
+                            <input type="hidden" name="id" value="<?= $orc['id'] ?>">
+                            <button type="submit" class="btn btn-small btn-danger" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             <?php endforeach; ?>

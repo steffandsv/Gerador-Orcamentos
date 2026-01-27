@@ -94,6 +94,20 @@ if ($action === 'save_company') {
     $stmt->execute([$id]);
     header("Location: index.php?page=empresas");
     exit;
+    
+} elseif ($action === 'delete_quote') {
+    $id = $_POST['id'];
+    
+    // Deleting items handled by constraint usually, but let's be safe or assume ON DELETE CASCADE
+    // If no cascade, we should delete items first. Assuming simplified:
+    $stmt = $pdo->prepare("DELETE FROM itens_orcamento WHERE orcamento_id=?");
+    $stmt->execute([$id]);
+    
+    $stmt = $pdo->prepare("DELETE FROM orcamentos WHERE id=?");
+    $stmt->execute([$id]);
+    
+    header("Location: index.php?page=orcamentos");
+    exit;
 
 } elseif ($action === 'save_quote') {
     $titulo = $_POST['titulo'];
@@ -111,10 +125,24 @@ if ($action === 'save_company') {
 
         $solicitante_nome = $_POST['solicitante_nome'] ?? '';
         $solicitante_cnpj = $_POST['solicitante_cnpj'] ?? '';
+        $quote_id = $_POST['quote_id'] ?? null;
 
-        $stmt = $pdo->prepare("INSERT INTO orcamentos (titulo, empresa1_id, empresa2_id, empresa3_id, variacao_maxima, template1_id, template2_id, template3_id, solicitante_nome, solicitante_cnpj) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$titulo, $emp1, $emp2, $emp3, $variacao, $tpl1, $tpl2, $tpl3, $solicitante_nome, $solicitante_cnpj]);
-        $orcamento_id = $pdo->lastInsertId();
+        if ($quote_id) {
+            // Update Existing
+            $stmt = $pdo->prepare("UPDATE orcamentos SET titulo=?, empresa1_id=?, empresa2_id=?, empresa3_id=?, variacao_maxima=?, template1_id=?, template2_id=?, template3_id=?, solicitante_nome=?, solicitante_cnpj=? WHERE id=?");
+            $stmt->execute([$titulo, $emp1, $emp2, $emp3, $variacao, $tpl1, $tpl2, $tpl3, $solicitante_nome, $solicitante_cnpj, $quote_id]);
+            
+            // Re-create items (simplest way for now)
+            $stmt = $pdo->prepare("DELETE FROM itens_orcamento WHERE orcamento_id=?");
+            $stmt->execute([$quote_id]);
+            $orcamento_id = $quote_id;
+
+        } else {
+            // Create New
+            $stmt = $pdo->prepare("INSERT INTO orcamentos (titulo, empresa1_id, empresa2_id, empresa3_id, variacao_maxima, template1_id, template2_id, template3_id, solicitante_nome, solicitante_cnpj) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$titulo, $emp1, $emp2, $emp3, $variacao, $tpl1, $tpl2, $tpl3, $solicitante_nome, $solicitante_cnpj]);
+            $orcamento_id = $pdo->lastInsertId();
+        }
 
         $stmtItem = $pdo->prepare("INSERT INTO itens_orcamento (orcamento_id, descricao, unidade, quantidade, preco_unitario) VALUES (?, ?, ?, ?, ?)");
         
@@ -173,6 +201,26 @@ switch ($page) {
         // Load companies for select
         $stmt = $pdo->query("SELECT * FROM empresas ORDER BY nome ASC");
         $empresas = $stmt->fetchAll();
+        
+        // Autocomplete Data: Unique Solicitantes
+        $stmt = $pdo->query("SELECT DISTINCT solicitante_nome, solicitante_cnpj FROM orcamentos WHERE solicitante_nome IS NOT NULL AND solicitante_nome != ''");
+        $solicitantes_db = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Edit Mode Data
+        $quote_edit = null;
+        $items_edit = [];
+        if (isset($_GET['id'])) {
+            $stmt = $pdo->prepare("SELECT * FROM orcamentos WHERE id = ?");
+            $stmt->execute([$_GET['id']]);
+            $quote_edit = $stmt->fetch();
+            
+            if ($quote_edit) {
+               $stmt = $pdo->prepare("SELECT * FROM itens_orcamento WHERE orcamento_id = ?");
+               $stmt->execute([$_GET['id']]);
+               $items_edit = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+
         require_once 'views/quote_form.php'; // Will create later
         break;
 
