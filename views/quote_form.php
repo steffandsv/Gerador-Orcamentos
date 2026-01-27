@@ -10,7 +10,10 @@
         <div class="flex-row" style="margin-top: 15px;">
             <div class="flex-col">
                 <label for="solicitante_nome">Nome do Solicitante:</label>
-                <input type="text" id="solicitante_nome" name="solicitante_nome" required placeholder="Ex: Prefeitura Municipal de X">
+                <div class="autocomplete-container">
+                    <input type="text" id="solicitante_nome" name="solicitante_nome" required value="<?= htmlspecialchars($q_sol_nome) ?>" placeholder="Ex: Prefeitura Municipal de X" autocomplete="off">
+                    <div id="solicitante_list_container" class="autocomplete-list"></div>
+                </div>
             </div>
              <div class="flex-col">
                 <label for="solicitante_cnpj">CNPJ do Solicitante:</label>

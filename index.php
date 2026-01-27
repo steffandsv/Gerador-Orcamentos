@@ -95,6 +95,23 @@ if ($action === 'save_company') {
     header("Location: index.php?page=empresas");
     exit;
     
+
+} elseif ($action === 'search_solicitante') {
+    $term = $_GET['term'] ?? '';
+    if (strlen($term) < 2) {
+        echo json_encode([]);
+        exit;
+    }
+    
+    // Search with wildcard, distinct
+    $stmt = $pdo->prepare("SELECT DISTINCT solicitante_nome, solicitante_cnpj FROM orcamentos WHERE solicitante_nome LIKE ? LIMIT 10");
+    $stmt->execute(['%' . $term . '%']);
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    header('Content-Type: application/json');
+    echo json_encode($results);
+    exit;
+
 } elseif ($action === 'delete_quote') {
     $id = $_POST['id'];
     
