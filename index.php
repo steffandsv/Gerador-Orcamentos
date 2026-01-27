@@ -2,7 +2,7 @@
 require_once 'config.php';
 
 $page = $_GET['page'] ?? 'home';
-$action = $_POST['action'] ?? '';
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // Global Router Logic
 if ($page === 'print') {
