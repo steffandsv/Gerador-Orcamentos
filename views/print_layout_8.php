@@ -36,7 +36,12 @@
         </div>
         <div style="text-align: right;">
             <strong>Para:</strong><br>
-            Cliente<br>
+            <?php if (!empty($quote['solicitante_nome'])): ?>
+                <?= htmlspecialchars($quote['solicitante_nome']) ?><br>
+                <?= htmlspecialchars($quote['solicitante_cnpj']) ?><br>
+            <?php else: ?>
+                Cliente<br>
+            <?php endif; ?>
             Data: <?= date('d/m/Y', strtotime($quote['data_criacao'])) ?>
         </div>
     </div>

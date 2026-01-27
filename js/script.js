@@ -101,9 +101,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         qty = parts[2].trim().replace(/^"|"$/g, '');
                         price = parts[3].trim().replace(/^"|"$/g, '');
                     } else if (parts.length === 3) {
-                        // Desc; Qty; Price (Backward compatibility)
-                        qty = parts[1].trim().replace(/^"|"$/g, '');
-                        price = parts[2].trim().replace(/^"|"$/g, '');
+                        // Desc; Qty; Price
+                        // Try to detect if the second col is Unit or Qty. Qty is usually numeric.
+                        const secondCol = parts[1].trim().replace(/^"|"$/g, '');
+                        if (isNaN(parseFloat(secondCol.replace(',', '.')))) {
+                             // It's likely a unit
+                             unit = secondCol;
+                             qty = parts[2].trim().replace(/^"|"$/g, ''); // Then 3rd must be Price? Wait if 3 cols and 2nd is unit, where is Qty?
+                             // 3 cols logic usually: Desc; Qty; Price OR Desc; Unit; Qty (missing price?)
+                             // Let's assume standard 3 cols is Desc; Qty; Price as per request.
+                        } else {
+                             qty = secondCol;
+                             price = parts[2].trim().replace(/^"|"$/g, '');
+                        }
                     } else if (parts.length === 2) {
                          qty = parts[1].trim().replace(/^"|"$/g, '');
                     }
@@ -128,18 +138,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         importBtn.addEventListener('click', function() {
+            let csvText = '';
             if (csvFile.files.length > 0) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    parseCSV(e.target.result);
+                    processImport(e.target.result);
                 };
                 reader.readAsText(csvFile.files[0]);
+                return; // processing async
             } else if (csvInput.value.trim() !== "") {
-                parseCSV(csvInput.value);
+                csvText = csvInput.value;
             } else {
                 alert('Por favor, cole o CSV ou selecione um arquivo.');
+                return;
             }
+            processImport(csvText);
         });
+
+        function processImport(text) {
+             // Clear existing items
+             tableBody.innerHTML = '';
+             itemIndex = 0;
+             
+             parseCSV(text);
+             
+             // Switch to Manual Mode
+             const manualRadio = document.getElementById('mode_manual');
+             if (manualRadio) {
+                 manualRadio.checked = true;
+                 // Trigger change event to update UI
+                 const event = new Event('change');
+                 manualRadio.dispatchEvent(event);
+             }
+        }
     }
 
     // Modal Logic

@@ -130,8 +130,13 @@
     <div class="info-cards">
         <div class="card">
             <div class="card-title">Para</div>
-            <div>Cliente Especial</div>
-            <div>A/C Departamento de Compras</div>
+            <?php if (!empty($quote['solicitante_nome'])): ?>
+                <div><strong><?= htmlspecialchars($quote['solicitante_nome']) ?></strong></div>
+                <div><?= htmlspecialchars($quote['solicitante_cnpj']) ?></div>
+            <?php else: ?>
+                <div>Cliente Especial</div>
+                <div>A/C Departamento de Compras</div>
+            <?php endif; ?>
         </div>
         <div class="card">
             <div class="card-title">Detalhes</div>

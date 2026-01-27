@@ -80,6 +80,13 @@
         <div class="meta">
             <p><strong>Orçamento #<?= $quote['id'] ?></strong><br>
                Data: <?= date('d/m/Y', strtotime($quote['data_criacao'])) ?></p>
+            <?php if (!empty($quote['solicitante_nome'])): ?>
+                <p style="margin-top:10px; border-top:1px solid #ccc; padding-top:5px;">
+                    <strong>SOLICITANTE:</strong><br>
+                    <?= htmlspecialchars($quote['solicitante_nome']) ?><br>
+                    CNPJ: <?= htmlspecialchars($quote['solicitante_cnpj']) ?>
+                </p>
+            <?php endif; ?>
         </div>
     </div>
 

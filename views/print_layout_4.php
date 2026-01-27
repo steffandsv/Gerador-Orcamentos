@@ -35,7 +35,13 @@
     <div class="meta-info">
         <div class="meta-box">
             <strong>CLIENTE</strong><br>
-            A/C Departamento de Compras
+            <strong>CLIENTE</strong><br>
+            <?php if (!empty($quote['solicitante_nome'])): ?>
+                <?= htmlspecialchars($quote['solicitante_nome']) ?><br>
+                <?= htmlspecialchars($quote['solicitante_cnpj']) ?>
+            <?php else: ?>
+                A/C Departamento de Compras
+            <?php endif; ?>
         </div>
         <div class="meta-box">
             <strong>ORÇAMENTO #<?= $quote['id'] ?></strong><br>

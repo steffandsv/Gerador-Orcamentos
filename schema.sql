@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS orcamentos (
     template1_id INT DEFAULT 1,
     template2_id INT DEFAULT 2,
     template3_id INT DEFAULT 3,
+    solicitante_nome VARCHAR(255),
+    solicitante_cnpj VARCHAR(20),
     FOREIGN KEY (empresa1_id) REFERENCES empresas(id),
     FOREIGN KEY (empresa2_id) REFERENCES empresas(id),
     FOREIGN KEY (empresa3_id) REFERENCES empresas(id)

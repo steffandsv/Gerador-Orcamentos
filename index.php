@@ -1,5 +1,5 @@
 <?php
-require 'config.php';
+require_once 'config.php';
 
 $page = $_GET['page'] ?? 'home';
 $action = $_POST['action'] ?? '';
@@ -14,7 +14,7 @@ if ($page === 'print') {
     $stmt->execute([$quote_id]);
     $quote = $stmt->fetch();
 
-    if (!$quote) die("Orçamento não encontrado.");
+    if (!$quote) { die("Orçamento não encontrado."); }
 
     // Determine Company ID
     $company_field = 'empresa' . $comp_idx . '_id';
@@ -56,12 +56,12 @@ if ($page === 'print') {
     // Select Layout based on Company Index (1, 2, 3)
     $tpl_field = 'template' . $comp_idx . '_id';
     $template_id = $quote[$tpl_field] ?? $comp_idx;
-    if (!$template_id) $template_id = $comp_idx;
+    if (!$template_id) { $template_id = $comp_idx; }
 
     $layout_file = 'views/print_layout_' . $template_id . '.php';
     
     if (file_exists($layout_file)) {
-        require $layout_file;
+        require_once $layout_file;
     } else {
         echo "Layout file not found: $layout_file";
     }
@@ -109,8 +109,11 @@ if ($action === 'save_company') {
     try {
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("INSERT INTO orcamentos (titulo, empresa1_id, empresa2_id, empresa3_id, variacao_maxima, template1_id, template2_id, template3_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$titulo, $emp1, $emp2, $emp3, $variacao, $tpl1, $tpl2, $tpl3]);
+        $solicitante_nome = $_POST['solicitante_nome'] ?? '';
+        $solicitante_cnpj = $_POST['solicitante_cnpj'] ?? '';
+
+        $stmt = $pdo->prepare("INSERT INTO orcamentos (titulo, empresa1_id, empresa2_id, empresa3_id, variacao_maxima, template1_id, template2_id, template3_id, solicitante_nome, solicitante_cnpj) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$titulo, $emp1, $emp2, $emp3, $variacao, $tpl1, $tpl2, $tpl3, $solicitante_nome, $solicitante_cnpj]);
         $orcamento_id = $pdo->lastInsertId();
 
         $stmtItem = $pdo->prepare("INSERT INTO itens_orcamento (orcamento_id, descricao, unidade, quantidade, preco_unitario) VALUES (?, ?, ?, ?, ?)");
@@ -134,7 +137,7 @@ if ($action === 'save_company') {
 
 // View Rendering
 if ($page !== 'print') {
-    require 'views/layout_header.php';
+    require_once 'views/layout_header.php';
 }
 
 switch ($page) {
@@ -142,7 +145,7 @@ switch ($page) {
         // Load companies from DB
         $stmt = $pdo->query("SELECT * FROM empresas ORDER BY nome ASC");
         $empresas = $stmt->fetchAll();
-        require 'views/company_list.php'; // Will create next
+        require_once 'views/company_list.php'; // Will create next
         break;
         
     case 'empresa_form':
@@ -153,7 +156,7 @@ switch ($page) {
             $stmt->execute([$id]);
             $empresa = $stmt->fetch();
         }
-        require 'views/company_form.php'; // Will create next
+        require_once 'views/company_form.php'; // Will create next
         break;
 
     case 'orcamentos':
@@ -163,14 +166,14 @@ switch ($page) {
                              LEFT JOIN empresas e ON o.empresa1_id = e.id 
                              ORDER BY o.data_criacao DESC");
         $orcamentos = $stmt->fetchAll();
-        require 'views/quote_list.php'; // Will create later
+        require_once 'views/quote_list.php'; // Will create later
         break;
         
     case 'orcamento_form':
         // Load companies for select
         $stmt = $pdo->query("SELECT * FROM empresas ORDER BY nome ASC");
         $empresas = $stmt->fetchAll();
-        require 'views/quote_form.php'; // Will create later
+        require_once 'views/quote_form.php'; // Will create later
         break;
 
     default:

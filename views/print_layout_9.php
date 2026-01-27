@@ -51,6 +51,17 @@
                     ID: #<?= $quote['id'] ?>
                 </div>
             </div>
+            </div>
+            
+            <?php if (!empty($quote['solicitante_nome'])): ?>
+            <div>
+                <div class="label">Solicitante</div>
+                <div class="value">
+                    <?= htmlspecialchars($quote['solicitante_nome']) ?><br>
+                    <?= htmlspecialchars($quote['solicitante_cnpj']) ?>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
         
         <table>

@@ -42,6 +42,16 @@
             <?= date('d/m/Y', strtotime($quote['data_criacao'])) ?>
         </div>
     </div>
+
+    <?php if (!empty($quote['solicitante_nome'])): ?>
+    <div class="grid" style="margin-bottom: 20px; border-bottom: 1px dashed #e67e22; padding-bottom: 20px;">
+        <div class="col">
+            <strong>SOLICITANTE</strong><br>
+            <?= htmlspecialchars($quote['solicitante_nome']) ?><br>
+            <?= htmlspecialchars($quote['solicitante_cnpj']) ?>
+        </div>
+    </div>
+    <?php endif; ?>
     
     <h3><?= htmlspecialchars($quote['titulo']) ?></h3>
     

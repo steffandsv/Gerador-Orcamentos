@@ -74,7 +74,13 @@
     <div class="info-block">
         <strong>Referência:</strong> <?= htmlspecialchars($quote['titulo']) ?><br>
         <strong>Número:</strong> <?= sprintf('%06d', $quote['id']) ?>/<?= date('Y') ?><br>
-        <strong>Data:</strong> <?= date('d/m/Y', strtotime($quote['data_criacao'])) ?>
+        <strong>Data:</strong> <?= date('d/m/Y', strtotime($quote['data_criacao'])) ?><br>
+        <?php if (!empty($quote['solicitante_nome'])): ?>
+            <div style="margin-top:10px; border-top:1px dashed #000; padding-top:5px;">
+                <strong>SOLICITANTE:</strong> <?= htmlspecialchars($quote['solicitante_nome']) ?><br>
+                <strong>CNPJ:</strong> <?= htmlspecialchars($quote['solicitante_cnpj']) ?>
+            </div>
+        <?php endif; ?>
     </div>
 
     <table>

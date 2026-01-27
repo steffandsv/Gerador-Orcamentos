@@ -34,7 +34,7 @@
         }
         
         .column {
-            width: 45%;
+            width: 32%;
         }
         
         .column h4 {
@@ -107,6 +107,16 @@
             <strong><?= htmlspecialchars($company['nome']) ?></strong><br>
             <?= htmlspecialchars($company['endereco']) ?><br>
             <?= htmlspecialchars($company['email']) ?>
+        </div>
+        
+        <div class="column" style="text-align: center;">
+            <h4>Para</h4>
+            <?php if (!empty($quote['solicitante_nome'])): ?>
+                <strong><?= htmlspecialchars($quote['solicitante_nome']) ?></strong><br>
+                <?= htmlspecialchars($quote['solicitante_cnpj']) ?>
+            <?php else: ?>
+                <strong>Cliente</strong>
+            <?php endif; ?>
         </div>
         <div class="column" style="text-align: right;">
             <h4>Orçamento</h4>

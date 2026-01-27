@@ -45,6 +45,12 @@
         </div>
         
         <p><strong>Data de Emissão:</strong> <?= date('d/m/Y', strtotime($quote['data_criacao'])) ?></p>
+        <?php if (!empty($quote['solicitante_nome'])): ?>
+            <p style="margin-top: 5px;">
+                <strong>Solicitante:</strong> <?= htmlspecialchars($quote['solicitante_nome']) ?> 
+                (CNPJ: <?= htmlspecialchars($quote['solicitante_cnpj']) ?>)
+            </p>
+        <?php endif; ?>
         
         <table>
             <thead>

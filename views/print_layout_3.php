@@ -92,6 +92,13 @@
             <strong>CONTATO:</strong><br>
             <?= htmlspecialchars($company['email']) ?><br>
             <?= htmlspecialchars($company['telefone']) ?>
+            <?php if (!empty($quote['solicitante_nome'])): ?>
+                <div style="margin-top:10px; padding-top:5px; border-top:1px solid #ddd;">
+                    <strong>SOLICITANTE:</strong><br>
+                    <?= htmlspecialchars($quote['solicitante_nome']) ?><br>
+                    <?= htmlspecialchars($quote['solicitante_cnpj']) ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 

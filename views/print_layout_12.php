@@ -103,6 +103,10 @@
         <strong>PROPOSTA COMERCIAL #<?= $quote['id'] ?></strong><br>
         REFERÊNCIA: <?= htmlspecialchars($quote['titulo']) ?><br>
         DATA: <?= date('d/m/Y', strtotime($quote['data_criacao'])) ?>
+        <?php if (!empty($quote['solicitante_nome'])): ?>
+            <br><br>
+            <strong>SOLICITANTE:</strong> <?= htmlspecialchars($quote['solicitante_nome']) ?> (<?= htmlspecialchars($quote['solicitante_cnpj']) ?>)
+        <?php endif; ?>
     </div>
     
     <table>

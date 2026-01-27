@@ -30,6 +30,11 @@
     
     <div class="quote-title">
         Orçamento #<?= $quote['id'] ?> &mdash; <?= date('d/m/Y', strtotime($quote['data_criacao'])) ?>
+        <?php if (!empty($quote['solicitante_nome'])): ?>
+            <div style="margin-top: 10px; font-size: 14px; color: #555;">
+                <strong>Solicitante:</strong> <?= htmlspecialchars($quote['solicitante_nome']) ?> (<?= htmlspecialchars($quote['solicitante_cnpj']) ?>)
+            </div>
+        <?php endif; ?>
     </div>
     
     <h3 style="text-align: center; font-weight: normal;"><?= htmlspecialchars($quote['titulo']) ?></h3>
