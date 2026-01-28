@@ -23,8 +23,13 @@ if (!$host || !$user || !$pass) {
 $mail = new PHPMailer(true);
 
 try {
-    // Server settings
-    $mail->SMTPDebug = SMTP::DEBUG_OFF; // Enable verbose debug output
+    // Capture Debug Output
+    $debugOutput = "";
+    $mail->SMTPDebug = SMTP::DEBUG_CONNECTION;
+    $mail->Debugoutput = function($str, $level) use (&$debugOutput) {
+        $debugOutput .= "$level: $str\n";
+    };
+
     $mail->isSMTP();
     $mail->Host       = $host;
     $mail->SMTPAuth   = true;
@@ -42,16 +47,20 @@ try {
     }
     
     $mail->Port       = $port;
-    $mail->Timeout    = 10; // 10 seconds timeout
+    $mail->Timeout    = 15;
 
     // Test Connection
     if ($mail->smtpConnect()) {
         $mail->smtpClose();
         echo json_encode(['success' => true, 'message' => 'Conexão SMTP realizada com sucesso!']);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Falha ao conectar no servidor SMTP.']);
+        echo json_encode(['success' => false, 'message' => 'Falha na conexão SMTP.', 'debug' => $debugOutput]);
     }
 
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Erro: ' . $mail->ErrorInfo . ' (Exp: ' . $e->getMessage() . ')']);
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Erro: ' . $mail->ErrorInfo . ' (Exp: ' . $e->getMessage() . ')',
+        'debug' => $debugOutput
+    ]);
 }

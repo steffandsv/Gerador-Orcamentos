@@ -118,6 +118,9 @@
                 resultDiv.style.background = '#f2dede';
                 resultDiv.style.color = '#a94442';
                 resultDiv.innerHTML = '❌ ' + res.message;
+                if (res.debug) {
+                    resultDiv.innerHTML += '<pre style="margin-top:10px; font-size:0.8em; white-space:pre-wrap; color:#333; background:rgba(255,255,255,0.5); padding:5px;">' + res.debug + '</pre>';
+                }
             }
         })
         .catch(err => {
