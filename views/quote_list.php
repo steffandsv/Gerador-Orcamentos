@@ -122,28 +122,29 @@ async function sendEmails() {
             // Extract body content
             const bodyContent = doc.body.innerHTML;
 
-            // 3. Render in hidden div
+            // 3. Render in hidden div (Fix: Use z-index instead of off-screen left)
             const container = document.createElement('div');
             // Combine styles and body
-            container.innerHTML = `<style>${css}</style><div class="pdf-content">${bodyContent}</div>`;
+            container.innerHTML = `<style>${css}</style><div class="pdf-content" style="background:#fff; padding:20px;">${bodyContent}</div>`;
             
             container.style.width = '800px'; 
             container.style.position = 'absolute';
-            container.style.left = '-9999px';
             container.style.top = '0';
+            container.style.left = '0'; // Keep inside viewport
+            container.style.zIndex = '-1000'; // Send to back
             container.style.background = '#fff'; // Ensure background is white
             document.body.appendChild(container);
 
             // Wait a moment for rendering
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 500)); // Increased delay slightly
             
             // 4. Convert to PDF Blob
             // html2pdf options
             const opt = {
-                margin: 10,
+                margin: 0, // Adjusted margin since we have padding in container
                 filename: `orcamento_${id}_${i}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
+                html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, // ScrollY 0 to force top
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             

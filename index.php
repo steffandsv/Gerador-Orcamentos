@@ -267,6 +267,10 @@ switch ($page) {
         require_once 'views/quote_form.php'; // Will create later
         break;
 
+    case 'test_pdf':
+        require_once 'views/test_pdf.php';
+        break;
+
     default:
         echo "<h2>Bem-vindo ao Gerador de Orçamentos</h2>";
         echo "<p>Selecione uma opção no menu acima.</p>";
