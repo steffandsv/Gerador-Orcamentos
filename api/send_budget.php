@@ -63,6 +63,9 @@ $bodies = [
 ];
 
 // Loop through 3 companies
+shuffle($subjects); // Randomize order once
+shuffle($bodies);   // Randomize order once
+
 for ($i = 1; $i <= 3; $i++) {
     $companyId = $quote["empresa{$i}_id"];
     
@@ -116,9 +119,12 @@ for ($i = 1; $i <= 3; $i++) {
         $mail->setFrom($user, $company['nome']);
         $mail->addAddress($recipient);
         
-        // Random Subject & Body
-        $useSubject = $subjects[array_rand($subjects)];
-        $useBodyRaw = $bodies[array_rand($bodies)];
+        // Unique Random Subject & Body
+        // Use modulus to cycle if we had fewer options than loop count (safety), 
+        // though we have enough strings. 
+        // Better: array_pop or just index.
+        $useSubject = $subjects[($i - 1) % count($subjects)]; 
+        $useBodyRaw = $bodies[($i - 1) % count($bodies)];
         $useBody = str_replace('%COMPANY_NAME%', $company['nome'], $useBodyRaw);
 
         $mail->isHTML(true);
