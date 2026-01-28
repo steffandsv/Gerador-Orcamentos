@@ -54,6 +54,17 @@
 </table>
 
 <script>
+function generateQuotes(id) {
+    // Open 3 tabs
+    window.open('index.php?page=print&id=' + id + '&company_index=1', '_blank');
+    // Small delay to ensure browser doesn't block popups if possible, though modern browsers block multiple automatic popups. 
+    // The user might need to allow popups.
+    setTimeout(() => {
+        window.open('index.php?page=print&id=' + id + '&company_index=2', '_blank');
+    }, 200);
+    setTimeout(() => {
+        window.open('index.php?page=print&id=' + id + '&company_index=3', '_blank');
+    }, 400);
 }
 
 function openEmailModal(id) {
@@ -173,15 +184,3 @@ async function sendEmails() {
         </div>
     </div>
 </div>
-    // Open 3 tabs
-    window.open('index.php?page=print&id=' + id + '&company_index=1', '_blank');
-    // Small delay to ensure browser doesn't block popups if possible, though modern browsers block multiple automatic popups. 
-    // The user might need to allow popups.
-    setTimeout(() => {
-        window.open('index.php?page=print&id=' + id + '&company_index=2', '_blank');
-    }, 200);
-    setTimeout(() => {
-        window.open('index.php?page=print&id=' + id + '&company_index=3', '_blank');
-    }, 400);
-}
-</script>
