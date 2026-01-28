@@ -119,7 +119,7 @@
     <div class="header">
         <div>
             <h1><?= htmlspecialchars($company['nome']) ?></h1>
-            <p><?= htmlspecialchars($company['email']) ?></p>
+            <p></p>
         </div>
         <div style="text-align: right;">
             <div style="font-size: 12px; opacity: 0.8;">ORÇAMENTO</div>

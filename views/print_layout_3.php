@@ -90,7 +90,7 @@
         </div>
         <div style="text-align:right;">
             <strong>CONTATO:</strong><br>
-            <?= htmlspecialchars($company['email']) ?><br>
+            <br>
             <?= htmlspecialchars($company['telefone']) ?>
             <?php if (!empty($quote['solicitante_nome'])): ?>
                 <div style="margin-top:10px; padding-top:5px; border-top:1px solid #ddd;">

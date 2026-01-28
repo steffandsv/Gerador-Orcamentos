@@ -34,7 +34,7 @@
             <strong>EMPRESA</strong><br>
             <?= htmlspecialchars($company['endereco']) ?><br>
             <?= htmlspecialchars($company['telefone']) ?><br>
-            <?= htmlspecialchars($company['email']) ?>
+            
         </div>
         <div class="col" style="text-align: right;">
             <strong>ORÇAMENTO</strong><br>

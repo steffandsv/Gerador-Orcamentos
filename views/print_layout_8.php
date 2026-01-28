@@ -32,7 +32,7 @@
         <div>
             <strong>De:</strong><br>
             <?= htmlspecialchars($company['endereco']) ?><br>
-            <?= htmlspecialchars($company['email']) ?>
+            
         </div>
         <div style="text-align: right;">
             <strong>Para:</strong><br>

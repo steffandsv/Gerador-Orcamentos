@@ -106,7 +106,7 @@
             <h4>De</h4>
             <strong><?= htmlspecialchars($company['nome']) ?></strong><br>
             <?= htmlspecialchars($company['endereco']) ?><br>
-            <?= htmlspecialchars($company['email']) ?>
+            
         </div>
         
         <div class="column" style="text-align: center;">

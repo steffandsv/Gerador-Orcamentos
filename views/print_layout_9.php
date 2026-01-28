@@ -31,7 +31,7 @@
             <div class="logo-box">Qt</div>
             <div>
                 <div class="company-name"><?= htmlspecialchars($company['nome']) ?></div>
-                <div style="font-size: 12px;"><?= htmlspecialchars($company['email']) ?></div>
+                <div style="font-size: 12px;"></div>
             </div>
         </div>
         

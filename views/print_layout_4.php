@@ -29,7 +29,7 @@
 <body>
     <div class="header-bg">
         <h1><?= htmlspecialchars($company['nome']) ?></h1>
-        <p><?= htmlspecialchars($company['endereco']) ?> | <?= htmlspecialchars($company['email']) ?></p>
+        <p><?= htmlspecialchars($company['endereco']) ?> | </p>
     </div>
     
     <div class="meta-info">

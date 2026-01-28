@@ -95,7 +95,7 @@
         <div class="divider"></div>
         <div class="meta">
             <?= htmlspecialchars($company['endereco']) ?><br>
-            <?= htmlspecialchars($company['email']) ?>
+            
         </div>
     </div>
     

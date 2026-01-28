@@ -35,7 +35,7 @@
             <div class="details">
                 <?= htmlspecialchars($company['endereco']) ?><br>
                 <?= htmlspecialchars($company['documento']) ?><br>
-                <?= htmlspecialchars($company['email']) ?><br>
+                <br>
                 <?= htmlspecialchars($company['telefone']) ?>
             </div>
         </div>

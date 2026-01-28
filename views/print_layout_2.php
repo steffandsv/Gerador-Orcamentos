@@ -68,7 +68,7 @@
     <div class="header">
         <h1><?= htmlspecialchars($company['nome']) ?></h1>
         <p><?= htmlspecialchars($company['endereco']) ?> &bull; <?= htmlspecialchars($company['telefone']) ?></p>
-        <p>CNPJ: <?= htmlspecialchars($company['documento']) ?> &bull; <?= htmlspecialchars($company['email']) ?></p>
+        <p>CNPJ: <?= htmlspecialchars($company['documento']) ?> </p>
     </div>
 
     <div class="info-block">
