@@ -22,6 +22,21 @@ try {
     $pdo->exec($sql5);
     echo "<p>Colunas de <strong>template</strong> verificadas.</p>";
 
+    // 3. Add SMTP columns to empresas
+    $cols = [
+        'smtp_host' => 'VARCHAR(255) DEFAULT NULL',
+        'smtp_port' => 'VARCHAR(10) DEFAULT NULL',
+        'smtp_user' => 'VARCHAR(255) DEFAULT NULL',
+        'smtp_pass' => 'VARCHAR(255) DEFAULT NULL',
+        'smtp_secure' => "VARCHAR(10) DEFAULT 'tls'" // tls, ssl, none
+    ];
+
+    foreach ($cols as $col => $def) {
+        $sql = "ALTER TABLE empresas ADD COLUMN IF NOT EXISTS $col $def";
+        $pdo->exec($sql);
+        echo "<p>Coluna <strong>$col</strong> verificada/criada.</p>";
+    }
+
     echo "<h3 style='color:green'>Atualização concluída com sucesso!</h3>";
     echo "<a href='index.php'>Voltar para o Sistema</a>";
 

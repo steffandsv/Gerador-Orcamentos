@@ -84,14 +84,22 @@ if ($action === 'save_company') {
     $telefone = $_POST['telefone'];
     $email = $_POST['email'];
     $detalhes = $_POST['detalhes_adicionais'] ?? '';
+    
+    // SMTP Fields
+    $smtp_host = $_POST['smtp_host'] ?? '';
+    $smtp_port = $_POST['smtp_port'] ?? '';
+    $smtp_user = $_POST['smtp_user'] ?? '';
+    $smtp_pass = $_POST['smtp_pass'] ?? '';
+    $smtp_secure = $_POST['smtp_secure'] ?? '';
+
     $id = $_POST['id'] ?? null;
 
     if ($id) {
-        $stmt = $pdo->prepare("UPDATE empresas SET nome=?, documento=?, endereco=?, telefone=?, email=?, detalhes_adicionais=? WHERE id=?");
-        $stmt->execute([$nome, $documento, $endereco, $telefone, $email, $detalhes, $id]);
+        $stmt = $pdo->prepare("UPDATE empresas SET nome=?, documento=?, endereco=?, telefone=?, email=?, detalhes_adicionais=?, smtp_host=?, smtp_port=?, smtp_user=?, smtp_pass=?, smtp_secure=? WHERE id=?");
+        $stmt->execute([$nome, $documento, $endereco, $telefone, $email, $detalhes, $smtp_host, $smtp_port, $smtp_user, $smtp_pass, $smtp_secure, $id]);
     } else {
-        $stmt = $pdo->prepare("INSERT INTO empresas (nome, documento, endereco, telefone, email, detalhes_adicionais) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$nome, $documento, $endereco, $telefone, $email, $detalhes]);
+        $stmt = $pdo->prepare("INSERT INTO empresas (nome, documento, endereco, telefone, email, detalhes_adicionais, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$nome, $documento, $endereco, $telefone, $email, $detalhes, $smtp_host, $smtp_port, $smtp_user, $smtp_pass, $smtp_secure]);
     }
     header("Location: index.php?page=empresas");
     exit;
@@ -186,6 +194,16 @@ if ($action === 'save_company') {
         $pdo->rollBack();
         die("Erro ao salvar orçamento: " . $e->getMessage());
     }
+}
+
+// SMTP Actions
+if ($action === 'test_smtp') {
+    require 'api/test_smtp.php';
+    exit;
+
+} elseif ($action === 'send_budget') {
+    require 'api/send_budget.php';
+    exit;
 }
 
 // View Rendering
