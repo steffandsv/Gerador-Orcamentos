@@ -90,95 +90,116 @@ async function sendEmails() {
     }
 
     const btn = document.getElementById('sendBtn');
-    const status = document.getElementById('statusMsg');
+    const status = document.getElementById('statusMsg'); // Re-using existing statusMsg for simplicity, as the new code implies a dynamic status element not present in the modal.
     
     btn.disabled = true;
     btn.innerText = 'Processando...';
     status.style.display = 'block';
-    
-    try {
-        const formData = new FormData();
-        formData.append('quote_id', id);
-        formData.append('recipient_email', recipient);
+    status.innerText = 'Iniciando processo...'; // Set initial status
 
-        // Generate 3 PDFs
+    try {
+        // Create Overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'pdf-generation-overlay';
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.background = 'rgba(0,0,0,0.8)';
+        overlay.style.zIndex = '9999';
+        overlay.style.display = 'flex';
+        overlay.style.flexDirection = 'column';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.color = 'white';
+        overlay.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 20px;">Gerando PDF <span id="overlay-counter">1</span>/3...</div>
+            <div id="pdf-container-visible" style="background:white; width:800px; min-height:1130px; padding:0; color:black; overflow:hidden; transform: scale(0.8); transform-origin: top center;"></div>
+        `;
+        document.body.appendChild(overlay);
+
+        const container = document.getElementById('pdf-container-visible');
+        const counter = document.getElementById('overlay-counter');
+        const formData = new FormData();
+        
+        // Get email
+        // Using 'recipient' variable already defined and validated
+        formData.append('quote_id', id);
+        formData.append('recipient_email', recipient); // Use 'recipient' from the modal input
+
+        // Generate 3 PDFs sequentially
         for (let i = 1; i <= 3; i++) {
-            status.innerText = `Gerando PDF da empresa ${i}/3...`;
+            counter.innerText = i;
+            status.innerText = `Gerando PDF ${i}/3...`; // Update modal status as well
             
-            // 1. Fetch HTML of the layout
+            // 1. Fetch HTML
             const url = `index.php?page=print&id=${id}&company_index=${i}`;
             const response = await fetch(url);
             const htmlText = await response.text();
             
-            // 2. Parse HTML to extract style and body
+            // 2. Parse & Insert into Visible Container
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlText, 'text/html');
             
-            // Extract styles
-            const styles = doc.querySelectorAll('style');
             let css = '';
-            styles.forEach(style => { css += style.innerHTML; });
-            
-            // Extract body content
+            doc.querySelectorAll('style').forEach(style => { css += style.innerHTML; });
             const bodyContent = doc.body.innerHTML;
 
-            // 3. Render in hidden div (Fix: Use z-index instead of off-screen left)
-            const container = document.createElement('div');
-            // Combine styles and body
-            container.innerHTML = `<style>${css}</style><div class="pdf-content" style="background:#fff; padding:20px;">${bodyContent}</div>`;
+            // Reset container content
+            container.innerHTML = `<style>${css}</style><div class="pdf-content" style="padding:20px;">${bodyContent}</div>`;
             
-            container.style.width = '800px'; 
-            container.style.position = 'absolute';
-            container.style.top = '0';
-            container.style.left = '0'; // Keep inside viewport
-            container.style.zIndex = '-1000'; // Send to back
-            container.style.background = '#fff'; // Ensure background is white
-            document.body.appendChild(container);
+            // Wait for render (crucial)
+            await new Promise(r => setTimeout(r, 800));
 
-            // Wait a moment for rendering
-            await new Promise(r => setTimeout(r, 500)); // Increased delay slightly
-            
-            // 4. Convert to PDF Blob
-            // html2pdf options
+            // 3. Generate PDF
             const opt = {
-                margin: 0, // Adjusted margin since we have padding in container
+                margin: 0,
                 filename: `orcamento_${id}_${i}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, // ScrollY 0 to force top
+                html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             
             const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
-            
             formData.append(`pdf${i}`, pdfBlob, `orcamento_${i}.pdf`);
             
-            // Cleanup
-            document.body.removeChild(container);
+            // Small pause
+            await new Promise(r => setTimeout(r, 200));
         }
 
+        document.body.removeChild(overlay); // Remove overlay after generation
         status.innerText = 'Enviando e-mail...';
-        
+
         // Send to Backend
-        const sendResponse = await fetch('index.php?action=send_budget', {
+        const res = await fetch('index.php?action=send_budget', {
             method: 'POST',
             body: formData
         });
+
+        const json = await res.json();
         
-        const result = await sendResponse.json();
-        
-        if (result.success) {
-            Swal.fire('Sucesso!', result.message, 'success');
-            closeEmailModal();
+        if (json.success) {
+            status.innerHTML = `<span style="color:green">✅ ${json.message}</span>`;
+            if (json.details) {
+                // console.log(json.details);
+            }
+            setTimeout(() => { closeEmailModal(); }, 2000); // Use existing close function
         } else {
-            Swal.fire('Erro!', result.message, 'error');
-            btn.disabled = false;
+            status.innerHTML = `<span style="color:red">❌ ${json.message}</span>`;
+            if (json.details) {
+                status.innerHTML += `<br><small>${json.details.join('<br>')}</small>`;
+            }
+            btn.disabled = false; // Re-enable button on error
             btn.innerText = 'Tentar Novamente';
         }
 
     } catch (err) {
         console.error(err);
-        Swal.fire('Erro!', 'Ocorreu um erro ao processar o envio.', 'error');
-        btn.disabled = false;
+        status.innerText = 'Erro: ' + err.message;
+        const overlay = document.getElementById('pdf-generation-overlay');
+        if(overlay) document.body.removeChild(overlay);
+        btn.disabled = false; // Re-enable button on error
         btn.innerText = 'Enviar Orçamentos';
     }
 }

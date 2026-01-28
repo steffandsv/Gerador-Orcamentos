@@ -125,13 +125,27 @@ for ($i = 1; $i <= 3; $i++) {
         $mail->Subject = $useSubject;
         $mail->Body    = $useBody;
 
-        // Attachment (Use the specific PDF for this iteration)
+        // Attachment (Save to /arquivos first)
         if (isset($_FILES['pdf' . $i]) && $_FILES['pdf' . $i]['error'] == 0) {
-            $name = 'Orcamento_' . $i . '_' . preg_replace('/[^a-zA-Z0-9]/', '_', $quote['titulo']) . '.pdf';
-            $mail->addAttachment($_FILES['pdf' . $i]['tmp_name'], $name);
+            $rawName = preg_replace('/[^a-zA-Z0-9]/', '_', $quote['titulo']);
+            $fileName = 'Orcamento_' . $i . '_' . $rawName . '_' . date('YmdHis') . '.pdf';
+            $targetDir = __DIR__ . '/../arquivos/';
+            $targetPath = $targetDir . $fileName;
+
+            // Ensure dir exists (just in case)
+            if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+
+            if (move_uploaded_file($_FILES['pdf' . $i]['tmp_name'], $targetPath)) {
+                $mail->addAttachment($targetPath, 'Orcamento_' . $i . '_' . $rawName . '.pdf');
+                $results[] = "{$company['nome']}: Arquivo salvo e anexado.";
+            } else {
+                $results[] = "{$company['nome']}: Erro ao salvar arquivo.";
+                // Try sending without attachment? No, crucial.
+                continue; 
+            }
         } else {
             $results[] = "{$company['nome']}: PDF não recebido.";
-            continue; // Skip sending if no PDF? Or send anyway? Better skip.
+            continue; 
         }
 
         $mail->send();
