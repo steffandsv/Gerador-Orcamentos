@@ -74,7 +74,7 @@
             <h1><?= htmlspecialchars($company['nome']) ?></h1>
             <p><?= htmlspecialchars($company['endereco']) ?><br>
                CNPJ: <?= htmlspecialchars($company['documento']) ?><br>
-               Tel: <?= htmlspecialchars($company['telefone']) ?> | Email: <?= htmlspecialchars($company['email']) ?>
+               Tel: <?= htmlspecialchars($company['telefone']) ?> | Email: <!--email_off--><?= htmlspecialchars($company['email']) ?><!--/email_off-->
             </p>
         </div>
         <div class="meta">

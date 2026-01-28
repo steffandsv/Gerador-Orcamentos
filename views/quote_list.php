@@ -115,7 +115,7 @@ async function sendEmails() {
         overlay.style.color = 'white';
         overlay.innerHTML = `
             <div style="font-size: 24px; margin-bottom: 20px;">Gerando PDF <span id="overlay-counter">1</span>/3...</div>
-            <div id="pdf-container-visible" style="background:white; width:800px; min-height:1130px; padding:0; color:black; overflow:hidden; transform: scale(0.8); transform-origin: top center;"></div>
+            <div id="pdf-container-visible" style="background:white; width:790px; height:auto; padding:0; color:black; overflow:hidden; transform: scale(0.8); transform-origin: top center;"></div>
         `;
         document.body.appendChild(overlay);
 
