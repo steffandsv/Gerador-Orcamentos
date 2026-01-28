@@ -108,24 +108,42 @@ async function sendEmails() {
             // 1. Fetch HTML of the layout
             const url = `index.php?page=print&id=${id}&company_index=${i}`;
             const response = await fetch(url);
-            const html = await response.text();
+            const htmlText = await response.text();
             
-            // 2. Render in hidden div
+            // 2. Parse HTML to extract style and body
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+            
+            // Extract styles
+            const styles = doc.querySelectorAll('style');
+            let css = '';
+            styles.forEach(style => { css += style.innerHTML; });
+            
+            // Extract body content
+            const bodyContent = doc.body.innerHTML;
+
+            // 3. Render in hidden div
             const container = document.createElement('div');
-            container.innerHTML = html;
-            container.style.width = '800px'; // Forced A4 width approx
+            // Combine styles and body
+            container.innerHTML = `<style>${css}</style><div class="pdf-content">${bodyContent}</div>`;
+            
+            container.style.width = '800px'; 
             container.style.position = 'absolute';
             container.style.left = '-9999px';
             container.style.top = '0';
+            container.style.background = '#fff'; // Ensure background is white
             document.body.appendChild(container);
+
+            // Wait a moment for rendering
+            await new Promise(r => setTimeout(r, 100));
             
-            // 3. Convert to PDF Blob
+            // 4. Convert to PDF Blob
             // html2pdf options
             const opt = {
                 margin: 10,
                 filename: `orcamento_${id}_${i}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
+                html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             
