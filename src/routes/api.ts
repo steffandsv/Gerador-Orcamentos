@@ -109,20 +109,93 @@ apiRouter.post('/send_budget', pdfFields, async (req, res) => {
                     }
                 });
 
-                const subject = `Orçamento - ${quote.titulo} - ${company.nome}`;
-                const html = `
-                    <p>Prezado(a),</p>
-                    <p>Segue em anexo o orçamento da empresa <strong>${company.nome}</strong> referente a: <strong>${quote.titulo}</strong></p>
-                    ${quote.solicitante_nome ? `<p>Solicitante: ${quote.solicitante_nome}</p>` : ''}
-                    <p>Atenciosamente,</p>
-                    <p><strong>${company.nome}</strong></p>
-                    ${company.documento ? `<p>CNPJ: ${company.documento}</p>` : ''}
-                    ${company.email ? `<p>E-mail: ${company.email}</p>` : ''}
-                    ${company.telefone ? `<p>Tel: ${company.telefone}</p>` : ''}
-                `;
+                // --- Randomized subject templates ---
+                const subjectTemplates = [
+                    `Orçamento - ${quote.titulo} - ${company.nome}`,
+                    `Proposta Comercial - ${quote.titulo}`,
+                    `Cotação de Preços - ${quote.titulo} | ${company.nome}`,
+                    `Envio de Orçamento: ${quote.titulo}`,
+                    `${company.nome} - Orçamento Ref. ${quote.titulo}`,
+                    `Proposta de Fornecimento - ${quote.titulo}`,
+                    `Orçamento para ${quote.titulo} - ${company.nome}`,
+                    `Cotação: ${quote.titulo} | Ref. ${company.nome}`,
+                    `Apresentação de Proposta - ${quote.titulo}`,
+                    `${company.nome} | Cotação - ${quote.titulo}`,
+                    `Proposta de Preços - ${quote.titulo}`,
+                    `Orçamento Comercial: ${quote.titulo} - ${company.nome}`,
+                ];
+                const subject = subjectTemplates[Math.floor(Math.random() * subjectTemplates.length)];
+
+                // --- Randomized body templates ---
+                const titulo = quote.titulo;
+                const nome = company.nome;
+                const doc = company.documento || '';
+                const email = company.email || '';
+                const tel = company.telefone || '';
+                const sol = quote.solicitante_nome || '';
+
+                const assinatura = (fields: ('doc' | 'email' | 'tel')[]) => {
+                    let sig = `<p><strong>${nome}</strong></p>`;
+                    if (fields.includes('doc') && doc) sig += `<p>CNPJ: ${doc}</p>`;
+                    if (fields.includes('email') && email) sig += `<p>${email}</p>`;
+                    if (fields.includes('tel') && tel) sig += `<p>Tel: ${tel}</p>`;
+                    return sig;
+                };
+
+                const bodyTemplates = [
+                    `<p>Prezado(a),</p>
+                     <p>Encaminhamos em anexo nosso orçamento referente a <strong>${titulo}</strong>.</p>
+                     <p>Ficamos à disposição para quaisquer esclarecimentos.</p>
+                     <p>Atenciosamente,</p>${assinatura(['doc', 'email', 'tel'])}`,
+
+                    `<p>Prezado(a),</p>
+                     <p>Conforme solicitado, segue anexo o orçamento da empresa <strong>${nome}</strong> para o processo: <strong>${titulo}</strong>.</p>
+                     <p>Cordialmente,</p>${assinatura(['doc'])}`,
+
+                    `<p>Prezado(a),</p>
+                     <p>Segue em anexo nossa proposta comercial referente a: <strong>${titulo}</strong>.</p>
+                     ${sol ? `<p>Solicitante: ${sol}</p>` : ''}
+                     <p>Permanecemos à disposição.</p>
+                     <p>Atenciosamente,</p>${assinatura(['doc', 'tel'])}`,
+
+                    `<p>Prezado Senhor(a),</p>
+                     <p>Vimos por meio deste apresentar nossa cotação de preços para <strong>${titulo}</strong>, conforme documento em anexo.</p>
+                     <p>Sem mais para o momento,</p>${assinatura(['doc', 'email'])}`,
+
+                    `<p>Prezado(a),</p>
+                     <p>Enviamos em anexo o orçamento solicitado referente a <strong>${titulo}</strong>.</p>
+                     <p>Quaisquer dúvidas, estamos à disposição.</p>
+                     <p>Att,</p>${assinatura(['email', 'tel'])}`,
+
+                    `<p>Prezado(a),</p>
+                     <p>Em atenção à solicitação de cotação, encaminhamos anexo nosso orçamento para <strong>${titulo}</strong>.</p>
+                     <p>Colocamo-nos à inteira disposição.</p>
+                     <p>Respeitosamente,</p>${assinatura(['doc'])}`,
+
+                    `<p>Prezado(a),</p>
+                     <p>É com satisfação que apresentamos nossa proposta para <strong>${titulo}</strong>, conforme arquivo anexo.</p>
+                     ${sol ? `<p>Ref. Solicitante: ${sol}</p>` : ''}
+                     <p>Atenciosamente,</p>${assinatura(['doc', 'email', 'tel'])}`,
+
+                    `<p>Prezado(a),</p>
+                     <p>Temos a satisfação de enviar nosso orçamento para o processo <strong>${titulo}</strong>.</p>
+                     <p>Esperamos atender às expectativas. Estamos à disposição para negociações.</p>
+                     <p>Cordialmente,</p>${assinatura(['tel'])}`,
+
+                    `<p>A/C Setor de Compras,</p>
+                     <p>Segue proposta de preços da <strong>${nome}</strong> referente a <strong>${titulo}</strong>.</p>
+                     <p>Aguardamos retorno. Desde já agradecemos a oportunidade.</p>
+                     <p>Atenciosamente,</p>${assinatura(['doc', 'email'])}`,
+
+                    `<p>Prezado(a),</p>
+                     <p>Conforme demanda, anexamos nossa cotação relativa a <strong>${titulo}</strong>.</p>
+                     <p>Nos colocamos à disposição para eventuais ajustes.</p>
+                     <p>Att,</p>${assinatura(['doc', 'tel'])}`,
+                ];
+                const html = bodyTemplates[Math.floor(Math.random() * bodyTemplates.length)];
 
                 const pdfBuffer = files[pdfKeys[i]][0].buffer;
-                const safeCompanyName = company.nome.replace(/[^a-zA-Z0-9]/g, '_');
+                const safeCompanyName = nome.replace(/[^a-zA-Z0-9]/g, '_');
 
                 await transporter.sendMail({
                     from: company.smtp_user,
