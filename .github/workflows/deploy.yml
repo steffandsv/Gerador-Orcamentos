@@ -10,14 +10,21 @@ jobs:
     steps:
       - name: SSH and Deploy
         uses: appleboy/ssh-action@master
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         with:
           host: ${{ secrets.HOSTINGER_HOST }}
           username: ${{ secrets.HOSTINGER_USER }}
           password: ${{ secrets.HOSTINGER_PASSWORD }}
           port: 2222
+          envs: DATABASE_URL
           script: |
             cd /opt/gerador-orcamentos
             git fetch --all
             git reset --hard origin/main
+            
+            # Gera o arquivo .env com a credencial segura do GitHub Secrets
+            echo "DATABASE_URL=$DATABASE_URL" > .env
+            
             docker compose down
             docker compose up -d --build
