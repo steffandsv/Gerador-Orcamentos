@@ -58,7 +58,7 @@ const pdfFields = upload.fields([
 
 apiRouter.post('/send_budget', pdfFields, async (req, res) => {
     try {
-        const quoteId = parseInt(req.body.quote_id);
+        const quoteId = Number.parseInt(req.body.quote_id);
         const recipientEmail = req.body.recipient_email;
 
         if (!quoteId || !recipientEmail) {
@@ -77,65 +77,81 @@ apiRouter.post('/send_budget', pdfFields, async (req, res) => {
         }
         const quote = quoteRecords[0];
 
-        // Fetch winning company (empresa1) for SMTP settings
-        const companyRecords = await db.select().from(empresas).where(eq(empresas.id, quote.empresa1_id));
-        if (companyRecords.length === 0) {
-            return res.json({ success: false, message: 'Empresa vencedora não encontrada.' });
-        }
-        const company = companyRecords[0];
+        // Fetch all 3 companies
+        const companyIds = [quote.empresa1_id, quote.empresa2_id, quote.empresa3_id];
+        const pdfKeys = ['pdf1', 'pdf2', 'pdf3'] as const;
+        const results: string[] = [];
+        let allSuccess = true;
 
-        if (!company.smtp_host || !company.smtp_user || !company.smtp_pass) {
-            return res.json({ success: false, message: 'Configurações SMTP da empresa não definidas. Configure o SMTP na página de edição da empresa.' });
-        }
-
-        // Create transporter from company SMTP settings
-        const transporter = nodemailer.createTransport({
-            host: company.smtp_host,
-            port: parseInt(company.smtp_port || '587'),
-            secure: company.smtp_secure === 'ssl',
-            auth: {
-                user: company.smtp_user,
-                pass: company.smtp_pass
+        for (let i = 0; i < 3; i++) {
+            const companyRecords = await db.select().from(empresas).where(eq(empresas.id, companyIds[i]));
+            if (companyRecords.length === 0) {
+                results.push(`Empresa ${i + 1}: não encontrada.`);
+                allSuccess = false;
+                continue;
             }
+            const company = companyRecords[0];
+
+            if (!company.smtp_host || !company.smtp_user || !company.smtp_pass) {
+                results.push(`${company.nome}: SMTP não configurado.`);
+                allSuccess = false;
+                continue;
+            }
+
+            try {
+                const transporter = nodemailer.createTransport({
+                    host: company.smtp_host,
+                    port: Number.parseInt(company.smtp_port || '587'),
+                    secure: company.smtp_secure === 'ssl',
+                    auth: {
+                        user: company.smtp_user,
+                        pass: company.smtp_pass
+                    }
+                });
+
+                const subject = `Orçamento - ${quote.titulo} - ${company.nome}`;
+                const html = `
+                    <p>Prezado(a),</p>
+                    <p>Segue em anexo o orçamento da empresa <strong>${company.nome}</strong> referente a: <strong>${quote.titulo}</strong></p>
+                    ${quote.solicitante_nome ? `<p>Solicitante: ${quote.solicitante_nome}</p>` : ''}
+                    <p>Atenciosamente,</p>
+                    <p><strong>${company.nome}</strong></p>
+                    ${company.documento ? `<p>CNPJ: ${company.documento}</p>` : ''}
+                    ${company.email ? `<p>E-mail: ${company.email}</p>` : ''}
+                    ${company.telefone ? `<p>Tel: ${company.telefone}</p>` : ''}
+                `;
+
+                const pdfBuffer = files[pdfKeys[i]][0].buffer;
+                const safeCompanyName = company.nome.replace(/[^a-zA-Z0-9]/g, '_');
+
+                await transporter.sendMail({
+                    from: company.smtp_user,
+                    to: recipientEmail,
+                    subject,
+                    html,
+                    attachments: [{
+                        filename: `orcamento_${safeCompanyName}.pdf`,
+                        content: pdfBuffer
+                    }]
+                });
+
+                results.push(`${company.nome}: ✅ Enviado.`);
+            } catch (emailErr: any) {
+                results.push(`${company.nome}: ❌ ${emailErr.message}`);
+                allSuccess = false;
+            }
+        }
+
+        res.json({
+            success: allSuccess,
+            message: allSuccess
+                ? `Todos os 3 e-mails enviados com sucesso para ${recipientEmail}!`
+                : 'Alguns e-mails falharam. Veja os detalhes.',
+            details: results
         });
-
-        // Build email
-        const subject = `Orçamentos - ${quote.titulo}`;
-        const html = `
-            <p>Prezado(a),</p>
-            <p>Segue em anexo os orçamentos referentes a: <strong>${quote.titulo}</strong></p>
-            ${quote.solicitante_nome ? `<p>Solicitante: ${quote.solicitante_nome}</p>` : ''}
-            <p>Atenciosamente,</p>
-            <p><strong>${company.nome}</strong></p>
-        `;
-
-        const attachments = [
-            { filename: `orcamento_1_${company.nome.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`, content: files.pdf1[0].buffer },
-        ];
-
-        // Fetch company names for attachment filenames
-        const company2Records = await db.select().from(empresas).where(eq(empresas.id, quote.empresa2_id));
-        const company3Records = await db.select().from(empresas).where(eq(empresas.id, quote.empresa3_id));
-        const company2Name = company2Records[0]?.nome || 'Empresa2';
-        const company3Name = company3Records[0]?.nome || 'Empresa3';
-
-        attachments.push(
-            { filename: `orcamento_2_${company2Name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`, content: files.pdf2[0].buffer },
-            { filename: `orcamento_3_${company3Name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`, content: files.pdf3[0].buffer }
-        );
-
-        await transporter.sendMail({
-            from: company.smtp_user,
-            to: recipientEmail,
-            subject,
-            html,
-            attachments
-        });
-
-        res.json({ success: true, message: `E-mail enviado com sucesso para ${recipientEmail}!` });
 
     } catch (e: any) {
         console.error('send_budget error:', e);
-        res.json({ success: false, message: 'Erro ao enviar e-mail: ' + e.message });
+        res.json({ success: false, message: 'Erro ao enviar e-mails: ' + e.message });
     }
 });
