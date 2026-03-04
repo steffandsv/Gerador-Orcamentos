@@ -14,7 +14,7 @@
         q_tpl3 = quote_edit.template3_id;
         
         // Prepare items for JS
-        items_json = json_encode(items_edit);
+        items_json = JSON.stringify(items_edit);
         page_title = "Editar Orçamento #q_id";
     } else {
         q_id = '';
@@ -42,19 +42,19 @@
 
     <div class="card">
         <label for="titulo">Título do Orçamento:</label>
-        <input type="text" id="titulo" name="titulo" value="<%= htmlspecialchars(q_titulo) %>" required placeholder="Ex: Material de Escritório - Julho/2024">
+        <input type="text" id="titulo" name="titulo" value="<%= q_titulo %>" required placeholder="Ex: Material de Escritório - Julho/2024">
         
         <div class="flex-row" style="margin-top: 15px;">
             <div class="flex-col">
                 <label for="solicitante_nome">Nome do Solicitante:</label>
                 <div class="autocomplete-container">
-                    <input type="text" id="solicitante_nome" name="solicitante_nome" required value="<%= htmlspecialchars(q_sol_nome) %>" placeholder="Ex: Prefeitura Municipal de X" autocomplete="off">
+                    <input type="text" id="solicitante_nome" name="solicitante_nome" required value="<%= q_sol_nome %>" placeholder="Ex: Prefeitura Municipal de X" autocomplete="off">
                     <div id="solicitante_list_container" class="autocomplete-list"></div>
                 </div>
             </div>
              <div class="flex-col">
                 <label for="solicitante_cnpj">CNPJ do Solicitante:</label>
-                <input type="text" id="solicitante_cnpj" name="solicitante_cnpj" value="<%= htmlspecialchars(q_sol_cnpj) %>" required placeholder="Ex: 00.000.000/0001-00">
+                <input type="text" id="solicitante_cnpj" name="solicitante_cnpj" value="<%= q_sol_cnpj %>" required placeholder="Ex: 00.000.000/0001-00">
             </div>
         </div>
 
@@ -64,7 +64,7 @@
                 <select name="empresa1_id" id="empresa1_id" class="company-select" required>
                     <option value="">Selecione...</option>
                     <% empresas.forEach(function(emp) { %>
-                        <option value="<%= emp.id %>" <%= emp.id == q_emp1 ? 'selected' : '' %>><%= htmlspecialchars(emp.nome) %></option>
+                        <option value="<%= emp.id %>" <%= emp.id == q_emp1 ? 'selected' : '' %>><%= emp.nome %></option>
                     <% }); %>
                 </select>
                 <label for="template1_id" style="margin-top: 10px;">Modelo de Layout:</label>
@@ -76,7 +76,7 @@
                 <select name="empresa2_id" id="empresa2_id" class="company-select" required>
                     <option value="">Selecione...</option>
                     <% empresas.forEach(function(emp) { %>
-                        <option value="<%= emp.id %>" <%= emp.id == q_emp2 ? 'selected' : '' %>><%= htmlspecialchars(emp.nome) %></option>
+                        <option value="<%= emp.id %>" <%= emp.id == q_emp2 ? 'selected' : '' %>><%= emp.nome %></option>
                     <% }); %>
                 </select>
                 <label for="template2_id" style="margin-top: 10px;">Modelo de Layout:</label>
@@ -88,7 +88,7 @@
                 <select name="empresa3_id" id="empresa3_id" class="company-select" required>
                     <option value="">Selecione...</option>
                     <% empresas.forEach(function(emp) { %>
-                        <option value="<%= emp.id %>" <%= emp.id == q_emp3 ? 'selected' : '' %>><%= htmlspecialchars(emp.nome) %></option>
+                        <option value="<%= emp.id %>" <%= emp.id == q_emp3 ? 'selected' : '' %>><%= emp.nome %></option>
                     <% }); %>
                 </select>
                 <label for="template3_id" style="margin-top: 10px;">Modelo de Layout:</label>
@@ -174,7 +174,7 @@
     </div>
 </div>
 
-<script src="js/script.js?v=<%= Date.now() %>"></script>
+<script src="/js/script.js?v=<%= Date.now() %>"></script>
 <script>
     // --- Solicitante Logic implemented directly here or can be moved to script.js if needed ---
 
@@ -244,7 +244,7 @@
     updateCompanyOptions();
 
 </script>
-<script src="js/autocomplete.js?v=<%= Date.now() %>"></script>
+<script src="/js/autocomplete.js?v=<%= Date.now() %>"></script>
 <script>
     // --- Populate Items on Edit ---
     var initialItems = <%= items_json %>;

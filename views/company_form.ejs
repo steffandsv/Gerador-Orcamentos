@@ -104,7 +104,7 @@
             secure: document.getElementById('smtp_secure').value
         };
 
-        fetch('index.php?action=test_smtp', {
+        fetch('/api/test_smtp', {
             method: 'POST',
             body: new URLSearchParams(data)
         })

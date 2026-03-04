@@ -1,53 +1,47 @@
 import express from 'express';
-import path from 'path';
-import bodyParser from 'body-parser';
+import path from 'node:path';
 import dotenv from 'dotenv';
-import { db } from './db';
-import { empresas, orcamentos, itens_orcamento } from './db/schema';
-import { eq, desc } from 'drizzle-orm';
 
 dotenv.config();
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../views'));
-
-// Serve existing static files
-// We will move "js", "arquivos", "style.css" to a "public" folder later or serve them from root. 
-// Assuming they are in the project root:
-app.use(express.static(path.join(__dirname, '../../')));
-
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
 
 import { empresasRouter } from './routes/empresas';
 import { orcamentosRouter } from './routes/orcamentos';
 import { printRouter } from './routes/print';
 import { apiRouter } from './routes/api';
 
-// Use modular routers
+const app = express();
+const port = process.env.PORT || 3000;
+
+// View engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../views'));
+
+// Static files - style.css, js/, arquivos/ live at project root (one level up from dist/)
+app.use(express.static(path.join(__dirname, '..')));
+
+// Body parsers
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Modular routers
 app.use('/empresas', empresasRouter);
 app.use('/orcamentos', orcamentosRouter);
 app.use('/print', printRouter);
 app.use('/api', apiRouter);
 
-// Global Router Fallback logic for ?page=...
+// Homepage & legacy fallback routing
 app.get('/', async (req, res) => {
     const page = (req.query.page as string) || 'home';
-    
-    // Simulating old PHP index.php fallback routing into new modular patterns
+
     if (page === 'empresas') return res.redirect('/empresas');
-    if (page === 'empresa_form') return res.redirect(`/empresas/form?id=${req.query.id || ''}`);
+    if (page === 'empresa_form') return res.redirect(`/empresas/form?id=${String(req.query.id || '')}`);
     if (page === 'orcamentos') return res.redirect('/orcamentos');
     if (page === 'orcamento_form') {
-        const id = req.query.id || '';
-        // We need an endpoint for orcamentos/form to render. I will add it back to the fallback or the router.
-        res.render('quote_form', { id }); // Converted to EJS
+        const id = String(req.query.id || '');
+        res.render('quote_form', { id });
         return;
     }
-    
+
     res.render('index', { page });
 });
 

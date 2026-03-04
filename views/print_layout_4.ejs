@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Orçamento - <%= htmlspecialchars(company.nome) %></title>
+    <title>Orçamento - <%= company.nome %></title>
     <style>
         body { font-family: 'Open Sans', sans-serif; margin: 0; padding: 0; color: #333; }
         @page { size: A4; margin: 0; }
@@ -28,8 +28,8 @@
 </head>
 <body>
     <div class="header-bg">
-        <h1><%= htmlspecialchars(company.nome) %></h1>
-        <p><%= htmlspecialchars(company.endereco) %> | </p>
+        <h1><%= company.nome %></h1>
+        <p><%= company.endereco %> | </p>
     </div>
     
     <div class="meta-info">
@@ -37,8 +37,8 @@
             <strong>CLIENTE</strong><br>
             <strong>CLIENTE</strong><br>
             <% if (!(!quote.solicitante_nome || quote.solicitante_nome.length === 0)) { %>
-                <%= htmlspecialchars(quote.solicitante_nome) %><br>
-                <%= htmlspecialchars(quote.solicitante_cnpj) %>
+                <%= quote.solicitante_nome %><br>
+                <%= quote.solicitante_cnpj %>
             <% } else { %>
                 A/C Departamento de Compras
             <% } %>
@@ -46,7 +46,7 @@
         <div class="meta-box">
             <strong>ORÇAMENTO #<%= quote.id %></strong><br>
             Data: <%= new Date(quote.data_criacao).toLocaleDateString('pt-BR') %><br>
-            Ref: <%= htmlspecialchars(quote.titulo) %>
+            Ref: <%= quote.titulo %>
         </div>
     </div>
     
@@ -62,10 +62,10 @@
                 </tr>
             </thead>
             <tbody>
-                <% grandTotal = 0; foreach (items as item): grandTotal += item.total_price; %>
+                <% items.forEach(function(item) { %>
                 <tr>
-                    <td><%= htmlspecialchars(item.descricao) %></td>
-                    <td><%= htmlspecialchars(item.unidade ?? 'UN') %></td>
+                    <td><%= item.descricao %></td>
+                    <td><%= item.unidade ?? 'UN' %></td>
                     <td><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
                     <td>R$ <%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
                     <td>R$ <%= Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>

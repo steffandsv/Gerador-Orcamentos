@@ -24,8 +24,8 @@
             <tr>
                 <td><%= orc.id %></td>
                 <td><%= new Date(orc.data_criacao).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) %></td>
-                <td><%= htmlspecialchars(orc.titulo) %></td>
-                <td><%= htmlspecialchars(orc.empresa_vencedora ?? 'N/A') %></td>
+                <td><%= orc.titulo %></td>
+                <td><%= orc.empresa_vencedora ?? 'N/A' %></td>
                 <td><%= orc.variacao_maxima %>%</td>
                 <td>
                     <div style="display:flex; gap:5px;">
@@ -35,10 +35,10 @@
                         <button onclick="openEmailModal(<%= orc.id %>)" class="btn btn-small btn-primary" title="Enviar por Email" style="background:#2196F3;">
                             <i class="fas fa-envelope"></i>
                         </button>
-                        <a href="/orcamentos/form&id=<%= orc.id %>" class="btn btn-small btn-secondary" title="Editar">
+                        <a href="/orcamentos/form?id=<%= orc.id %>" class="btn btn-small btn-secondary" title="Editar">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <form action="" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este orçamento?');" style="margin:0;">
+                        <form action="/orcamentos/delete" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este orçamento?');" style="margin:0;">
                             <input type="hidden" name="action" value="delete_quote">
                             <input type="hidden" name="id" value="<%= orc.id %>">
                             <button type="submit" class="btn btn-small btn-danger" title="Excluir">
@@ -56,14 +56,14 @@
 <script>
 function generateQuotes(id) {
     // Open 3 tabs
-    window.open('index.php?page=print&id=' + id + '&company_index=1', '_blank');
+    window.open('/print?id=' + id + '&company_index=1', '_blank');
     // Small delay to ensure browser doesn't block popups if possible, though modern browsers block multiple automatic popups. 
     // The user might need to allow popups.
     setTimeout(() => {
-        window.open('index.php?page=print&id=' + id + '&company_index=2', '_blank');
+        window.open('/print?id=' + id + '&company_index=2', '_blank');
     }, 200);
     setTimeout(() => {
-        window.open('index.php?page=print&id=' + id + '&company_index=3', '_blank');
+        window.open('/print?id=' + id + '&company_index=3', '_blank');
     }, 400);
 }
 
@@ -134,7 +134,7 @@ async function sendEmails() {
             status.innerText = `Gerando PDF ${i}/3...`; // Update modal status as well
             
             // 1. Fetch HTML
-            const url = `index.php?page=print&id=${id}&company_index=${i}`;
+            const url = `/print?id=${id}&company_index=${i}`;
             const response = await fetch(url);
             const htmlText = await response.text();
             
@@ -172,7 +172,7 @@ async function sendEmails() {
         status.innerText = 'Enviando e-mail...';
 
         // Send to Backend
-        const res = await fetch('index.php?action=send_budget', {
+        const res = await fetch('/api/send_budget', {
             method: 'POST',
             body: formData
         });

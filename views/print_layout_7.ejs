@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Orçamento - <%= htmlspecialchars(company.nome) %></title>
+    <title>Orçamento - <%= company.nome %></title>
     <style>
         body { font-family: 'Verdana', sans-serif; padding: 30px; background: #eef2f3; }
         @page { size: A4; margin: 1cm; }
@@ -31,24 +31,24 @@
 <body>
     <div class="page-container">
         <div class="header">
-            <div class="logo"><%= htmlspecialchars(company.nome) %></div>
+            <div class="logo"><%= company.nome %></div>
             <div class="details">
-                <%= htmlspecialchars(company.endereco) %><br>
-                <%= htmlspecialchars(company.documento) %><br>
+                <%= company.endereco %><br>
+                <%= company.documento %><br>
                 <br>
-                <%= htmlspecialchars(company.telefone) %>
+                <%= company.telefone %>
             </div>
         </div>
         
         <div class="title-bar">
-            Orçamento #<%= quote.id %> - <%= htmlspecialchars(quote.titulo) %>
+            Orçamento #<%= quote.id %> - <%= quote.titulo %>
         </div>
         
         <p><strong>Data de Emissão:</strong> <%= new Date(quote.data_criacao).toLocaleDateString('pt-BR') %></p>
         <% if (!(!quote.solicitante_nome || quote.solicitante_nome.length === 0)) { %>
             <p style="margin-top: 5px;">
-                <strong>Solicitante:</strong> <%= htmlspecialchars(quote.solicitante_nome) %> 
-                (CNPJ: <%= htmlspecialchars(quote.solicitante_cnpj) %>)
+                <strong>Solicitante:</strong> <%= quote.solicitante_nome %> 
+                (CNPJ: <%= quote.solicitante_cnpj %>)
             </p>
         <% } %>
         
@@ -63,10 +63,10 @@
                 </tr>
             </thead>
             <tbody>
-                <% grandTotal = 0; foreach (items as item): grandTotal += item.total_price; %>
+                <% items.forEach(function(item) { %>
                 <tr>
-                    <td><%= htmlspecialchars(item.descricao) %></td>
-                    <td style="text-align: center;"><%= htmlspecialchars(item.unidade ?? 'UN') %></td>
+                    <td><%= item.descricao %></td>
+                    <td style="text-align: center;"><%= item.unidade ?? 'UN' %></td>
                     <td style="text-align: center;"><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
                     <td style="text-align: right;"><%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
                     <td style="text-align: right;"><%= Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
