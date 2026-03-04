@@ -28,3 +28,12 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+
+/lib/generated/prisma
+
+# NodeJS Migration artifacts
+dist/
+test.js
+test2.js
+convert.js
+prisma_err.log
