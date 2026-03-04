@@ -1,4 +1,4 @@
-name: Auto Deploy to Hostinger VPS
+name: Auto Deploy to Mabus VPS
 
 on:
   push:
@@ -16,8 +16,8 @@ jobs:
           password: ${{ secrets.HOSTINGER_PASSWORD }}
           port: 2222
           script: |
-            cd /path/to/Gerador-Orcamentos/on/vps 
-            git checkout main
-            git pull origin main
-            docker-compose down
-            docker-compose up -d --build
+            cd /opt/gerador-orcamentos
+            git fetch --all
+            git reset --hard origin/main
+            docker compose down
+            docker compose up -d --build
