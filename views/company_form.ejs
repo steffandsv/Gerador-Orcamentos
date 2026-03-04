@@ -1,28 +1,28 @@
 <h2><%= empresa ? 'Editar' : 'Nova' %> Empresa</h2>
 
-<form action="/empresas" method="POST" class="card" id="companyForm">
+<form action="/empresas/save" method="POST" class="card" id="companyForm">
     <input type="hidden" name="action" value="save_company">
     <% if (empresa) { %>
         <input type="hidden" name="id" value="<%= empresa.id %>">
     <% } %>
 
     <label>Nome da Empresa:</label>
-    <input type="text" name="nome" required value="<%= empresa.nome ?? '' %>">
+    <input type="text" name="nome" required value="<%= empresa.nome || '' %>">
 
     <label>Documento (CNPJ/CPF):</label>
-    <input type="text" name="documento" value="<%= empresa.documento ?? '' %>">
+    <input type="text" name="documento" value="<%= empresa.documento || '' %>">
 
     <label>Endereço:</label>
-    <textarea name="endereco" rows="3"><%= empresa.endereco ?? '' %></textarea>
+    <textarea name="endereco" rows="3"><%= empresa.endereco || '' %></textarea>
 
     <div class="flex-row">
         <div class="flex-col">
             <label>Telefone:</label>
-            <input type="text" name="telefone" value="<%= empresa.telefone ?? '' %>">
+            <input type="text" name="telefone" value="<%= empresa.telefone || '' %>">
         </div>
         <div class="flex-col">
             <label>Email:</label>
-            <input type="email" name="email" value="<%= empresa.email ?? '' %>">
+            <input type="email" name="email" value="<%= empresa.email || '' %>">
         </div>
     </div>
 
@@ -38,7 +38,7 @@
             <button type="button" onclick="execCmd('removeFormat')" title="Limpar Formatação">🧹</button>
         </div>
         <div id="editor" contenteditable="true" style="padding: 10px; min-height: 150px; background: #fff;">
-            <%= empresa.detalhes_adicionais ?? '' %>
+            <%= empresa.detalhes_adicionais || '' %>
         </div>
     </div>
     <input type="hidden" name="detalhes_adicionais" id="detalhes_adicionais">
@@ -48,30 +48,30 @@
         <div class="flex-row">
             <div class="flex-col">
                 <label>Servidor SMTP (Host):</label>
-                <input type="text" name="smtp_host" id="smtp_host" value="<%= empresa.smtp_host ?? '' %>" placeholder="smtp.gmail.com">
+                <input type="text" name="smtp_host" id="smtp_host" value="<%= empresa.smtp_host || '' %>" placeholder="smtp.gmail.com">
             </div>
             <div class="flex-col" style="max-width: 100px;">
                 <label>Porta:</label>
-                <input type="text" name="smtp_port" id="smtp_port" value="<%= empresa.smtp_port ?? '587' %>">
+                <input type="text" name="smtp_port" id="smtp_port" value="<%= empresa.smtp_port || '587' %>">
             </div>
         </div>
         <div class="flex-row">
             <div class="flex-col">
                 <label>Usuário SMTP:</label>
-                <input type="text" name="smtp_user" id="smtp_user" value="<%= empresa.smtp_user ?? '' %>">
+                <input type="text" name="smtp_user" id="smtp_user" value="<%= empresa.smtp_user || '' %>">
             </div>
             <div class="flex-col">
                 <label>Senha SMTP:</label>
-                <input type="password" name="smtp_pass" id="smtp_pass" value="<%= empresa.smtp_pass ?? '' %>">
+                <input type="password" name="smtp_pass" id="smtp_pass" value="<%= empresa.smtp_pass || '' %>">
             </div>
         </div>
         <div class="flex-row">
             <div class="flex-col">
                 <label>Segurança:</label>
                 <select name="smtp_secure" id="smtp_secure">
-                    <option value="tls" <%= (empresa.smtp_secure ?? '') == 'tls' ? 'selected' : '' %>>TLS (Padrão Gmail)</option>
-                    <option value="ssl" <%= (empresa.smtp_secure ?? '') == 'ssl' ? 'selected' : '' %>>SSL</option>
-                    <option value="none" <%= (empresa.smtp_secure ?? '') == 'none' ? 'selected' : '' %>>Nenhuma</option>
+                    <option value="tls" <%= (empresa.smtp_secure || '') == 'tls' ? 'selected' : '' %>>TLS (Padrão Gmail)</option>
+                    <option value="ssl" <%= (empresa.smtp_secure || '') == 'ssl' ? 'selected' : '' %>>SSL</option>
+                    <option value="none" <%= (empresa.smtp_secure || '') == 'none' ? 'selected' : '' %>>Nenhuma</option>
                 </select>
             </div>
             <div class="flex-col" style="justify-content: flex-end;">

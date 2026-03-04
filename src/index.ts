@@ -29,18 +29,14 @@ app.use('/orcamentos', orcamentosRouter);
 app.use('/print', printRouter);
 app.use('/api', apiRouter);
 
-// Homepage & legacy fallback routing
+// Homepage & legacy fallback routing (for any old bookmarks with ?page=...)
 app.get('/', async (req, res) => {
     const page = (req.query.page as string) || 'home';
 
     if (page === 'empresas') return res.redirect('/empresas');
     if (page === 'empresa_form') return res.redirect(`/empresas/form?id=${String(req.query.id || '')}`);
     if (page === 'orcamentos') return res.redirect('/orcamentos');
-    if (page === 'orcamento_form') {
-        const id = String(req.query.id || '');
-        res.render('quote_form', { id });
-        return;
-    }
+    if (page === 'orcamento_form') return res.redirect(`/orcamentos/form?id=${String(req.query.id || '')}`);
 
     res.render('index', { page });
 });

@@ -9,25 +9,28 @@ export const empresasRouter = Router();
 empresasRouter.get('/', async (req, res) => {
     try {
         const allEmpresas = await db.select().from(empresas);
-        res.render('company_list', { empresas: allEmpresas }); // Converted to EJS
+        res.render('company_list', { empresas: allEmpresas });
     } catch (e) {
+        console.error(e);
         res.status(500).send("Database error");
     }
 });
 
-// GET /empresa_form - Form for creating or editing a company
+// GET /empresas/form - Form for creating or editing a company
 empresasRouter.get('/form', async (req, res) => {
     try {
         const id = req.query.id as string;
-        let empresa = null;
+        let empresa: Record<string, any> | null = null;
 
         if (id) {
-            const found = await db.select().from(empresas).where(eq(empresas.id, parseInt(id)));
+            const found = await db.select().from(empresas).where(eq(empresas.id, Number.parseInt(id)));
             if (found.length > 0) empresa = found[0];
         }
 
-        res.render('company_form', { empresa }); // Converted to EJS
+        // Pass empty object for new company so template can safely access .nome, .email etc.
+        res.render('company_form', { empresa: empresa || {} });
     } catch (e) {
+        console.error(e);
         res.status(500).send("Database error");
     }
 });
@@ -52,12 +55,12 @@ empresasRouter.post('/save', async (req, res) => {
         const id = req.body.id;
 
         if (id) {
-            await db.update(empresas).set(payload).where(eq(empresas.id, parseInt(id)));
+            await db.update(empresas).set(payload).where(eq(empresas.id, Number.parseInt(id)));
         } else {
             await db.insert(empresas).values(payload);
         }
 
-        res.redirect('/?page=empresas');
+        res.redirect('/empresas');
     } catch (e) {
         console.error(e);
         res.status(500).send("Database error on saving company");
@@ -69,10 +72,11 @@ empresasRouter.post('/delete', async (req, res) => {
     try {
         const id = req.body.id;
         if (id) {
-            await db.delete(empresas).where(eq(empresas.id, parseInt(id)));
+            await db.delete(empresas).where(eq(empresas.id, Number.parseInt(id)));
         }
-        res.redirect('/?page=empresas');
+        res.redirect('/empresas');
     } catch (e) {
+        console.error(e);
         res.status(500).send("Database error deleting company");
     }
 });

@@ -82,7 +82,7 @@ printRouter.get('/', async (req, res) => {
         const tpl_field = `template${comp_idx}_id` as keyof typeof quote;
         const template_id = quote[tpl_field] || comp_idx;
 
-        const layout_file = `print_layout_${template_id}.ejs`;
+        const layout_file = `print_layout_${template_id}`;
 
         res.render(layout_file, {
             quote: displayQuote,

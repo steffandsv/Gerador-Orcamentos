@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { orcamentos, empresas, itens_orcamento } from '../db/schema';
-import { eq, desc, like, sql } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 export const orcamentosRouter = Router();
 
@@ -24,10 +24,38 @@ orcamentosRouter.get('/', async (req, res) => {
         .leftJoin(empresas, eq(orcamentos.empresa1_id, empresas.id))
         .orderBy(desc(orcamentos.data_criacao));
         
-        res.render('quote_list', { orcamentos: results }); // Converted to EJS
+        res.render('quote_list', { orcamentos: results });
     } catch (e) {
         console.error(e);
         res.status(500).send("Database error listing quotes");
+    }
+});
+
+// GET /orcamentos/form - Form for creating or editing a quote
+orcamentosRouter.get('/form', async (req, res) => {
+    try {
+        const id = req.query.id as string;
+        const allEmpresas = await db.select().from(empresas);
+
+        let quote_edit = null;
+        let items_edit: any[] = [];
+
+        if (id) {
+            const found = await db.select().from(orcamentos).where(eq(orcamentos.id, Number.parseInt(id)));
+            if (found.length > 0) {
+                quote_edit = found[0];
+                items_edit = await db.select().from(itens_orcamento).where(eq(itens_orcamento.orcamento_id, Number.parseInt(id)));
+            }
+        }
+
+        res.render('quote_form', {
+            empresas: allEmpresas,
+            quote_edit,
+            items_edit
+        });
+    } catch (e) {
+        console.error(e);
+        res.status(500).send("Database error loading quote form");
     }
 });
 
@@ -36,11 +64,10 @@ orcamentosRouter.post('/delete', async (req, res) => {
     try {
         const id = req.body.id;
         if (id) {
-            // In Drizzle, cascade delete is configured in schema if set, but we can do it explicitly
-            await db.delete(itens_orcamento).where(eq(itens_orcamento.orcamento_id, parseInt(id)));
-            await db.delete(orcamentos).where(eq(orcamentos.id, parseInt(id)));
+            await db.delete(itens_orcamento).where(eq(itens_orcamento.orcamento_id, Number.parseInt(id)));
+            await db.delete(orcamentos).where(eq(orcamentos.id, Number.parseInt(id)));
         }
-        res.redirect('/?page=orcamentos');
+        res.redirect('/orcamentos');
     } catch (e) {
         console.error(e);
         res.status(500).send("Database error deleting quote");
@@ -52,12 +79,12 @@ orcamentosRouter.post('/save', async (req, res) => {
     try {
         const payload = {
             titulo: req.body.titulo,
-            empresa1_id: parseInt(req.body.empresa1_id),
-            empresa2_id: parseInt(req.body.empresa2_id),
-            empresa3_id: parseInt(req.body.empresa3_id),
-            template1_id: parseInt(req.body.template1_id) || 1,
-            template2_id: parseInt(req.body.template2_id) || 2,
-            template3_id: parseInt(req.body.template3_id) || 3,
+            empresa1_id: Number.parseInt(req.body.empresa1_id),
+            empresa2_id: Number.parseInt(req.body.empresa2_id),
+            empresa3_id: Number.parseInt(req.body.empresa3_id),
+            template1_id: Number.parseInt(req.body.template1_id) || 1,
+            template2_id: Number.parseInt(req.body.template2_id) || 2,
+            template3_id: Number.parseInt(req.body.template3_id) || 3,
             variacao_maxima: req.body.variacao_maxima,
             solicitante_nome: req.body.solicitante_nome || null,
             solicitante_cnpj: req.body.solicitante_cnpj || null
@@ -70,18 +97,14 @@ orcamentosRouter.post('/save', async (req, res) => {
             let orcamento_id: number;
 
             if (quote_id) {
-                // Update
-                orcamento_id = parseInt(quote_id);
+                orcamento_id = Number.parseInt(quote_id);
                 await tx.update(orcamentos).set(payload).where(eq(orcamentos.id, orcamento_id));
-                // Delete old items
                 await tx.delete(itens_orcamento).where(eq(itens_orcamento.orcamento_id, orcamento_id));
             } else {
-                // Insert
                 const [result] = await tx.insert(orcamentos).values(payload);
                 orcamento_id = result.insertId;
             }
 
-            // Insert new items
             if (items.length > 0) {
                 const itemsToInsert = items
                     .filter((item: any) => item.descricao)
@@ -99,7 +122,7 @@ orcamentosRouter.post('/save', async (req, res) => {
             }
         });
 
-        res.redirect('/?page=orcamentos');
+        res.redirect('/orcamentos');
     } catch (e) {
         console.error(e);
         res.status(500).send("Error saving quote");

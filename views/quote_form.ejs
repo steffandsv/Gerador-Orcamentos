@@ -34,7 +34,7 @@
 %>
 <h2><%= page_title %></h2>
 
-<form action="/orcamentos" method="POST" id="quoteForm">
+<form action="/orcamentos/save" method="POST" id="quoteForm">
     <input type="hidden" name="action" value="save_quote">
     <% if (q_id) { %>
         <input type="hidden" name="quote_id" value="<%= q_id %>">
@@ -160,16 +160,14 @@
         <h2>Selecione um Modelo</h2>
         <div class="template-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:20px; padding:20px 0;">
             <!-- Templates will be loaded here -->
-            <% for(i=1; i<=12; i++): %>
+            <% for(var i=1; i<=12; i++) { %>
             <div class="template-item" data-id="<%= i %>" style="border:1px solid #ddd; padding:10px; cursor:pointer; transition:0.3s;">
                 <h4 style="margin:0 0 10px 0; text-align:center;">Modelo <%= i %></h4>
-                <div class="preview-frame-container" style="height:350px; overflow:hidden; border:1px solid #eee; position:relative; background:#f0f0f0;">
-                    <!-- Loading iframe lazily would be better, but for now simple -->
-                    <iframe title="Preview do Modelo <%= i %>" src="preview_template.php?template_id=<%= i %>" style="width:100%; height:100%; border:none; pointer-events:none; transform:scale(0.25); transform-origin:0 0; width:400%; height:400%; background:white;"></iframe>
-                    <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer;"></div>
+                <div class="preview-frame-container" style="height:120px; overflow:hidden; border:1px solid #eee; position:relative; background:#f9f9f9; display:flex; align-items:center; justify-content:center;">
+                    <span style="font-size:3em; color:#ccc;"><%= i %></span>
                 </div>
             </div>
-            <% endfor; %>
+            <% } %>
         </div>
     </div>
 </div>
