@@ -12,6 +12,7 @@ import { apiRouter } from './routes/api';
 import { authRouter } from './routes/auth';
 import { usuariosRouter } from './routes/usuarios';
 import { auditRouter } from './routes/auditoria';
+import { pipelineRouter } from './routes/pipeline';
 import { requireAuth, injectUser } from './middleware/auth';
 
 const app = express();
@@ -58,8 +59,9 @@ app.use('/print', printRouter);
 app.use('/api', apiRouter);
 app.use('/usuarios', usuariosRouter);
 app.use('/auditoria', auditRouter);
+app.use(pipelineRouter);
 
-// Homepage & legacy fallback routing (for any old bookmarks with ?page=...)
+// Homepage — Pipeline Board (legacy fallback for old bookmarks)
 app.get('/', async (req, res) => {
     const page = (req.query.page as string) || 'home';
 
@@ -68,7 +70,7 @@ app.get('/', async (req, res) => {
     if (page === 'orcamentos') return res.redirect('/orcamentos');
     if (page === 'orcamento_form') return res.redirect(`/orcamentos/form?id=${String(req.query.id || '')}`);
 
-    res.render('index', { page });
+    res.redirect('/pipeline');
 });
 
 // Start Server

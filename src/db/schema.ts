@@ -1,4 +1,4 @@
-import { mysqlTable, serial, varchar, text, int, decimal, datetime, tinyint, json, mysqlEnum } from 'drizzle-orm/mysql-core';
+import { mysqlTable, serial, varchar, text, int, decimal, datetime, tinyint, json, mysqlEnum, primaryKey } from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
 
 // ── Users ──
@@ -67,6 +67,14 @@ export const orcamentos = mysqlTable('orcamentos', {
   template3_id: int('template3_id').default(3),
   solicitante_nome: varchar('solicitante_nome', { length: 255 }),
   solicitante_cnpj: varchar('solicitante_cnpj', { length: 20 }),
+  // ── Pipeline fields ──
+  stage: varchar('stage', { length: 20 }).notNull().default('inbox'),
+  deadline: datetime('deadline'),
+  assigned_to: int('assigned_to'),
+  outcome: varchar('outcome', { length: 20 }),
+  description: text('description'),
+  position: int('position').notNull().default(0),
+  // ── Audit fields ──
   created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
   updated_at: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deleted_at: datetime('deleted_at'),
@@ -87,4 +95,32 @@ export const itens_orcamento = mysqlTable('itens_orcamento', {
   auto_preco: tinyint('auto_preco').default(0),
   marca_modelo: varchar('marca_modelo', { length: 255 }),
   link_compra: varchar('link_compra', { length: 500 }),
+});
+
+// ── Labels ──
+export const labels = mysqlTable('labels', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 50 }).notNull(),
+  color: varchar('color', { length: 7 }).notNull().default('#3b82f6'),
+  created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ── Quote-Label Junction ──
+export const orcamento_labels = mysqlTable('orcamento_labels', {
+  orcamento_id: int('orcamento_id').notNull().references(() => orcamentos.id, { onDelete: 'cascade' }),
+  label_id: int('label_id').notNull().references(() => labels.id, { onDelete: 'cascade' }),
+}, (table) => [
+  primaryKey({ columns: [table.orcamento_id, table.label_id] }),
+]);
+
+// ── Comments ──
+export const comments = mysqlTable('comments', {
+  id: serial('id').primaryKey(),
+  orcamento_id: int('orcamento_id').notNull().references(() => orcamentos.id, { onDelete: 'cascade' }),
+  user_id: int('user_id').notNull().references(() => usuarios.id),
+  parent_id: int('parent_id'),
+  body: text('body').notNull(),
+  created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updated_at: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deleted_at: datetime('deleted_at'),
 });

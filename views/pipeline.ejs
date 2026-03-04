@@ -1,0 +1,199 @@
+<%- include('layout_header') %>
+<% /* Pipeline Board uses its own script */ %>
+<link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
+
+<div class="pipeline-toolbar">
+    <div class="pipeline-toolbar-left">
+        <h2 class="pipeline-title"><i class="fas fa-columns"></i> Pipeline</h2>
+        <div class="pipeline-filters">
+            <div class="filter-group">
+                <input type="text" id="filterSearch" class="filter-input" placeholder="Buscar por título...">
+            </div>
+            <div class="filter-group">
+                <select id="filterAssignee" class="filter-select">
+                    <option value="">Todos os responsáveis</option>
+                    <% users.forEach(function(u) { %>
+                        <option value="<%= u.id %>"><%= u.nome_completo || u.username %></option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select id="filterLabel" class="filter-select">
+                    <option value="">Todas as etiquetas</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="pipeline-toolbar-right">
+        <button class="btn-pipeline btn-labels" onclick="openLabelManager()" title="Gerenciar Etiquetas">
+            <i class="fas fa-tags"></i>
+        </button>
+        <a href="/orcamentos/form" class="btn-pipeline btn-new">
+            <i class="fas fa-plus"></i> Nova Cotação
+        </a>
+    </div>
+</div>
+
+<div class="pipeline-board" id="pipelineBoard">
+    <% stageKeys.forEach(function(key) { var meta = stages[key]; %>
+    <div class="pipeline-column" data-stage="<%= key %>" id="stage-<%= key %>">
+        <div class="column-header">
+            <span class="column-icon"><%= meta.icon %></span>
+            <span class="column-title"><%= meta.label %></span>
+            <span class="column-count" id="count-<%= key %>">0</span>
+        </div>
+        <div class="column-body" data-stage="<%= key %>"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event, '<%= key %>')">
+            <!-- Cards inserted by JS -->
+        </div>
+    </div>
+    <% }); %>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- CARD DETAIL MODAL                                          -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="card-modal-overlay" id="cardModal" style="display:none;">
+    <div class="card-modal">
+        <div class="card-modal-header">
+            <h3 class="card-modal-title" id="modalTitle">—</h3>
+            <button class="card-modal-close" onclick="closeCardModal()"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="card-modal-body">
+            <div class="card-modal-main">
+                <!-- Description -->
+                <div class="modal-section">
+                    <div class="section-header">
+                        <i class="fas fa-align-left"></i> <span>Descrição</span>
+                        <button class="btn-inline" id="btnSaveDesc" onclick="saveDescription()" style="display:none;">Salvar</button>
+                    </div>
+                    <textarea id="modalDescription" class="modal-textarea"
+                        placeholder="Adicione uma descrição detalhada (aceita Markdown)..."
+                        oninput="document.getElementById('btnSaveDesc').style.display='inline-flex'"></textarea>
+                </div>
+
+                <!-- CSV Import -->
+                <div class="modal-section">
+                    <div class="section-header">
+                        <i class="fas fa-file-csv"></i> <span>Importar Itens (CSV)</span>
+                    </div>
+                    <textarea id="modalCsvInput" class="modal-textarea-small"
+                        placeholder="Cole CSV: Descrição;Quantidade;Valor (uma linha por item)" rows="3"></textarea>
+                    <button class="btn-inline btn-sm" onclick="importCsvToCard()">
+                        <i class="fas fa-upload"></i> Importar
+                    </button>
+                    <span class="csv-status" id="csvStatus"></span>
+                </div>
+
+                <!-- Comments -->
+                <div class="modal-section">
+                    <div class="section-header">
+                        <i class="fas fa-comments"></i> <span>Comentários</span>
+                    </div>
+                    <div id="commentsList" class="comments-list">
+                        <!-- Comments loaded by JS -->
+                    </div>
+                    <div class="comment-composer">
+                        <textarea id="commentInput" class="comment-input"
+                            placeholder="Escreva um comentário... Use @nome para mencionar alguém"
+                            rows="2" onkeydown="handleCommentKey(event)"></textarea>
+                        <div class="mention-dropdown" id="mentionDropdown" style="display:none;"></div>
+                        <button class="btn-pipeline btn-sm" onclick="submitComment()">
+                            <i class="fas fa-paper-plane"></i> Enviar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-modal-sidebar">
+                <!-- Assignee -->
+                <div class="sidebar-section">
+                    <label class="sidebar-label"><i class="fas fa-user"></i> Responsável</label>
+                    <select id="modalAssignee" class="sidebar-select" onchange="assignUser()">
+                        <option value="">Ninguém</option>
+                        <% users.forEach(function(u) { %>
+                            <option value="<%= u.id %>"><%= u.nome_completo || u.username %></option>
+                        <% }); %>
+                    </select>
+                </div>
+
+                <!-- Labels -->
+                <div class="sidebar-section">
+                    <label class="sidebar-label"><i class="fas fa-tags"></i> Etiquetas</label>
+                    <div id="modalLabels" class="modal-labels-list"></div>
+                    <div class="label-add-row">
+                        <select id="labelAddSelect" class="sidebar-select sidebar-select-sm">
+                            <option value="">+ Adicionar...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Deadline -->
+                <div class="sidebar-section">
+                    <label class="sidebar-label"><i class="fas fa-clock"></i> Data Limite</label>
+                    <input type="datetime-local" id="modalDeadline" class="sidebar-input" onchange="saveDeadline()">
+                </div>
+
+                <!-- Outcome (only visible for 'enviados' stage) -->
+                <div class="sidebar-section" id="outcomeSection" style="display:none;">
+                    <label class="sidebar-label"><i class="fas fa-trophy"></i> Resultado</label>
+                    <div class="outcome-buttons">
+                        <button class="outcome-btn outcome-won" data-outcome="won" onclick="setOutcome('won')">
+                            🏆 Vencemos
+                        </button>
+                        <button class="outcome-btn outcome-lost" data-outcome="lost" onclick="setOutcome('lost')">
+                            ❌ Perdemos
+                        </button>
+                        <button class="outcome-btn outcome-pending" data-outcome="" onclick="setOutcome('')">
+                            ⏳ Aguardando
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="sidebar-section">
+                    <label class="sidebar-label"><i class="fas fa-bolt"></i> Ações</label>
+                    <a id="btnEditQuote" href="#" class="sidebar-action" target="_blank">
+                        <i class="fas fa-edit"></i> Editar Orçamento
+                    </a>
+                    <a id="btnPrintQuote" href="#" class="sidebar-action" onclick="generateQuotesFromModal(); return false;">
+                        <i class="fas fa-print"></i> Gerar PDFs
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- LABEL MANAGER MODAL                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="card-modal-overlay" id="labelManagerModal" style="display:none;">
+    <div class="card-modal label-manager-modal">
+        <div class="card-modal-header">
+            <h3 class="card-modal-title"><i class="fas fa-tags"></i> Gerenciar Etiquetas</h3>
+            <button class="card-modal-close" onclick="closeLabelManager()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="card-modal-body" style="flex-direction:column;">
+            <div class="label-create-row">
+                <input type="text" id="newLabelName" class="filter-input" placeholder="Nome da etiqueta">
+                <input type="color" id="newLabelColor" class="label-color-input" value="#3b82f6">
+                <button class="btn-pipeline btn-sm" onclick="createLabel()"><i class="fas fa-plus"></i> Criar</button>
+            </div>
+            <div id="labelManagerList" class="label-manager-list">
+                <!-- Labels loaded by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Server-injected data
+    window.__PIPELINE_USERS__ = <%- JSON.stringify(users) %>;
+    window.__CURRENT_USER__ = <%- JSON.stringify(typeof currentUser !== 'undefined' ? currentUser : {}) %>;
+</script>
+<script src="/js/pipeline.js?v=<%= Date.now() %>" defer></script>
+<%- include('layout_footer') %>

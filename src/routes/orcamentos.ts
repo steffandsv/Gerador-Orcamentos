@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { orcamentos, empresas, itens_orcamento } from '../db/schema';
-import { eq, desc, isNull } from 'drizzle-orm';
+import { eq, desc, isNull, sql } from 'drizzle-orm';
 import { logAudit } from '../lib/audit';
 
 export const orcamentosRouter = Router();
@@ -140,8 +140,16 @@ orcamentosRouter.post('/save', async (req, res) => {
                     ipAddress: req.ip ?? null,
                 });
             } else {
+                // Get max position in inbox stage
+                const [maxPos] = await tx.select({ maxP: sql`COALESCE(MAX(position), 0)` })
+                    .from(orcamentos)
+                    .where(eq(orcamentos.stage, 'inbox'));
+                const nextPosition = (maxPos?.maxP as number || 0) + 1;
+
                 const [result] = await tx.insert(orcamentos).values({
                     ...payload,
+                    stage: 'inbox',
+                    position: nextPosition,
                     created_by: currentUser.id,
                 });
                 orcamento_id = result.insertId;

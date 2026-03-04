@@ -10,7 +10,11 @@ export type AuditAction =
   | 'restore'
   | 'send_email'
   | 'test_smtp'
-  | 'generate_pdf';
+  | 'generate_pdf'
+  | 'move_card'
+  | 'assign_card'
+  | 'add_comment'
+  | 'add_label';
 
 export async function logAudit(params: {
   userId: number;
