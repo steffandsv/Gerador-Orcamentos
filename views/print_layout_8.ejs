@@ -36,13 +36,13 @@
         </div>
         <div style="text-align: right;">
             <strong>Para:</strong><br>
-            <% if (!empty(quote.solicitante_nome)) { %>
+            <% if (!(!quote.solicitante_nome || quote.solicitante_nome.length === 0)) { %>
                 <%= htmlspecialchars(quote.solicitante_nome) %><br>
                 <%= htmlspecialchars(quote.solicitante_cnpj) %><br>
             <% } else { %>
                 Cliente<br>
             <% } %>
-            Data: <%= date('d/m/Y', strtotime(quote.data_criacao)) %>
+            Data: <%= new Date(quote.data_criacao).toLocaleDateString('pt-BR') %>
         </div>
     </div>
     
@@ -63,20 +63,20 @@
             <tr>
                 <td><%= htmlspecialchars(item.descricao) %></td>
                 <td><%= htmlspecialchars(item.unidade ?? 'UN') %></td>
-                <td><%= number_format(item.quantidade, 2, ',', '.') %></td>
-                <td><%= number_format(item.final_price, 2, ',', '.') %></td>
-                <td style="text-align: right;"><%= number_format(item.total_price, 2, ',', '.') %></td>
+                <td><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td><%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td style="text-align: right;"><%= Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
             </tr>
             <% }); %>
         </tbody>
     </table>
     
     <div class="total">
-        R$ <%= number_format(grandTotal, 2, ',', '.') %>
+        R$ <%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
     </div>
     
     <div class="footer-notes">
-        <% if (!empty(company.detalhes_adicionais)) { %>
+        <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
             <%= company.detalhes_adicionais %>
         <% } else { %>
             <p>Este orçamento é válido por 30 dias.</p>

@@ -1,6 +1,6 @@
 <%
     // Populate variables from Edit Data if available, otherwise defaults
-    if (isset(quote_edit) && quote_edit) {
+    if ((typeof quote_edit !== 'undefined' && quote_edit !== null) && quote_edit) {
         q_id = quote_edit.id;
         q_titulo = quote_edit.titulo;
         q_sol_nome = quote_edit.solicitante_nome;
@@ -34,7 +34,7 @@
 %>
 <h2><%= page_title %></h2>
 
-<form action="index.php?page=orcamentos" method="POST" id="quoteForm">
+<form action="/orcamentos" method="POST" id="quoteForm">
     <input type="hidden" name="action" value="save_quote">
     <% if (q_id) { %>
         <input type="hidden" name="quote_id" value="<%= q_id %>">
@@ -174,7 +174,7 @@
     </div>
 </div>
 
-<script src="js/script.js?v=<%= time() %>"></script>
+<script src="js/script.js?v=<%= Date.now() %>"></script>
 <script>
     // --- Solicitante Logic implemented directly here or can be moved to script.js if needed ---
 
@@ -244,7 +244,7 @@
     updateCompanyOptions();
 
 </script>
-<script src="js/autocomplete.js?v=<%= time() %>"></script>
+<script src="js/autocomplete.js?v=<%= Date.now() %>"></script>
 <script>
     // --- Populate Items on Edit ---
     var initialItems = <%= items_json %>;

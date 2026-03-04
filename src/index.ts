@@ -12,7 +12,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, '../../views'));
+app.set('views', path.join(__dirname, '../views'));
 
 // Serve existing static files
 // We will move "js", "arquivos", "style.css" to a "public" folder later or serve them from root. 

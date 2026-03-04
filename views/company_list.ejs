@@ -1,6 +1,6 @@
 <h2>Empresas Cadastradas</h2>
 <div style="margin-bottom: 15px;">
-    <a href="index.php?page=empresa_form" class="btn">Nova Empresa</a>
+    <a href="/empresas/form" class="btn">Nova Empresa</a>
 </div>
 
 <table>
@@ -14,7 +14,7 @@
         </tr>
     </thead>
     <tbody>
-        <% if (empty(empresas)) { %>
+        <% if ((!empresas || empresas.length === 0)) { %>
         <tr>
             <td colspan="5" style="text-align:center;">Nenhuma empresa cadastrada.</td>
         </tr>
@@ -26,8 +26,8 @@
                 <td><%= htmlspecialchars(emp.documento) %></td>
                 <td><%= htmlspecialchars(emp.email) %></td>
                 <td>
-                    <a href="index.php?page=empresa_form&id=<%= emp.id %>" class="btn btn-small">Editar</a>
-                    <form action="index.php" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza?');">
+                    <a href="/empresas/form&id=<%= emp.id %>" class="btn btn-small">Editar</a>
+                    <form action="" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza?');">
                         <input type="hidden" name="action" value="delete_company">
                         <input type="hidden" name="id" value="<%= emp.id %>">
                         <button type="submit" class="btn btn-small btn-danger">Excluir</button>

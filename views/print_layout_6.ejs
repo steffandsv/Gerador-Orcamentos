@@ -29,8 +29,8 @@
     </div>
     
     <div class="quote-title">
-        Orçamento #<%= quote.id %> &mdash; <%= date('d/m/Y', strtotime(quote.data_criacao)) %>
-        <% if (!empty(quote.solicitante_nome)) { %>
+        Orçamento #<%= quote.id %> &mdash; <%= new Date(quote.data_criacao).toLocaleDateString('pt-BR') %>
+        <% if (!(!quote.solicitante_nome || quote.solicitante_nome.length === 0)) { %>
             <div style="margin-top: 10px; font-size: 14px; color: #555;">
                 <strong>Solicitante:</strong> <%= htmlspecialchars(quote.solicitante_nome) %> (<%= htmlspecialchars(quote.solicitante_cnpj) %>)
             </div>
@@ -54,23 +54,23 @@
             <tr>
                 <td><%= htmlspecialchars(item.descricao) %></td>
                 <td style="text-align: center;"><%= htmlspecialchars(item.unidade ?? 'UN') %></td>
-                <td style="text-align: center;"><%= number_format(item.quantidade, 2, ',', '.') %></td>
-                <td style="text-align: right;">R$ <%= number_format(item.final_price, 2, ',', '.') %></td>
-                <td style="text-align: right;">R$ <%= number_format(item.total_price, 2, ',', '.') %></td>
+                <td style="text-align: center;"><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td style="text-align: right;">R$ <%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td style="text-align: right;">R$ <%= Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
             </tr>
             <% }); %>
         </tbody>
     </table>
     
     <div class="total-section">
-        Total: R$ <%= number_format(grandTotal, 2, ',', '.') %>
+        Total: R$ <%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
     </div>
     
     <div style="clear: both;"></div>
     
     <div class="terms">
         <h4>Considerações</h4>
-        <% if (!empty(company.detalhes_adicionais)) { %>
+        <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
             <%= company.detalhes_adicionais %>
         <% } else { %>
             <p>Validade da proposta: 15 dias.</p>

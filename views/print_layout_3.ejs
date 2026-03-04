@@ -92,7 +92,7 @@
             <strong>CONTATO:</strong><br>
             <br>
             <%= htmlspecialchars(company.telefone) %>
-            <% if (!empty(quote.solicitante_nome)) { %>
+            <% if (!(!quote.solicitante_nome || quote.solicitante_nome.length === 0)) { %>
                 <div style="margin-top:10px; padding-top:5px; border-top:1px solid #ddd;">
                     <strong>SOLICITANTE:</strong><br>
                     <%= htmlspecialchars(quote.solicitante_nome) %><br>
@@ -103,7 +103,7 @@
     </div>
 
     <h3>PROPOSTA COMERCIAL: <%= htmlspecialchars(quote.titulo) %></h3>
-    <p>Data: <%= date('d/m/Y', strtotime(quote.data_criacao)) %></p>
+    <p>Data: <%= new Date(quote.data_criacao).toLocaleDateString('pt-BR') %></p>
 
     <table>
         <thead>
@@ -124,22 +124,22 @@
             <tr>
                 <td><%= htmlspecialchars(item.descricao) %></td>
                 <td><%= htmlspecialchars(item.unidade ?? 'UN') %></td>
-                <td><%= number_format(item.quantidade, 2, ',', '.') %></td>
-                <td>R$ <%= number_format(item.final_price, 2, ',', '.') %></td>
-                <td>R$ <%= number_format(item.total_price, 2, ',', '.') %></td>
+                <td><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td>R$ <%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td>R$ <%= Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
             </tr>
             <% }); %>
         </tbody>
     </table>
 
     <div class="total-box">
-        TOTAL: R$ <%= number_format(grandTotal, 2, ',', '.') %>
+        TOTAL: R$ <%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
     </div>
     
     <div class="clear"></div>
 
     <div class="notes">
-        <% if (!empty(company.detalhes_adicionais)) { %>
+        <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
             <div class="rich-text">
                 <%= company.detalhes_adicionais %>
             </div>

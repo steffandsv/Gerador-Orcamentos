@@ -1,6 +1,6 @@
 <h2><%= empresa ? 'Editar' : 'Nova' %> Empresa</h2>
 
-<form action="index.php?page=empresas" method="POST" class="card" id="companyForm">
+<form action="/empresas" method="POST" class="card" id="companyForm">
     <input type="hidden" name="action" value="save_company">
     <% if (empresa) { %>
         <input type="hidden" name="id" value="<%= empresa.id %>">
@@ -82,7 +82,7 @@
     </fieldset>
 
     <button type="submit" class="btn">Salvar Empresa</button>
-    <a href="index.php?page=empresas" class="btn" style="background:#888;">Cancelar</a>
+    <a href="/empresas" class="btn" style="background:#888;">Cancelar</a>
 </form>
 
 <script>

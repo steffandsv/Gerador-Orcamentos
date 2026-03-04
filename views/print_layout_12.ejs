@@ -102,8 +102,8 @@
     <div class="quote-details">
         <strong>PROPOSTA COMERCIAL #<%= quote.id %></strong><br>
         REFERÊNCIA: <%= htmlspecialchars(quote.titulo) %><br>
-        DATA: <%= date('d/m/Y', strtotime(quote.data_criacao)) %>
-        <% if (!empty(quote.solicitante_nome)) { %>
+        DATA: <%= new Date(quote.data_criacao).toLocaleDateString('pt-BR') %>
+        <% if (!(!quote.solicitante_nome || quote.solicitante_nome.length === 0)) { %>
             <br><br>
             <strong>SOLICITANTE:</strong> <%= htmlspecialchars(quote.solicitante_nome) %> (<%= htmlspecialchars(quote.solicitante_cnpj) %>)
         <% } %>
@@ -124,14 +124,14 @@
             <tr>
                 <td><%= htmlspecialchars(item.descricao) %></td>
                 <td style="text-align: center;"><%= htmlspecialchars(item.unidade ?? 'UN') %></td>
-                <td style="text-align: center;"><%= number_format(item.quantidade, 2, ',', '.') %></td>
-                <td style="text-align: right;"><%= number_format(item.final_price, 2, ',', '.') %></td>
-                <td style="text-align: right;"><%= number_format(item.total_price, 2, ',', '.') %></td>
+                <td style="text-align: center;"><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td style="text-align: right;"><%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td style="text-align: right;"><%= Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
             </tr>
             <% }); %>
             <tr class="total-row">
                 <td colspan="4" style="text-align: right; padding-right: 20px;">TOTAL FINAL</td>
-                <td style="text-align: right;"><%= number_format(grandTotal, 2, ',', '.') %></td>
+                <td style="text-align: right;"><%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
             </tr>
         </tbody>
     </table>

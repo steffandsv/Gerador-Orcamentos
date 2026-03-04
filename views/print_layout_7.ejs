@@ -44,8 +44,8 @@
             Orçamento #<%= quote.id %> - <%= htmlspecialchars(quote.titulo) %>
         </div>
         
-        <p><strong>Data de Emissão:</strong> <%= date('d/m/Y', strtotime(quote.data_criacao)) %></p>
-        <% if (!empty(quote.solicitante_nome)) { %>
+        <p><strong>Data de Emissão:</strong> <%= new Date(quote.data_criacao).toLocaleDateString('pt-BR') %></p>
+        <% if (!(!quote.solicitante_nome || quote.solicitante_nome.length === 0)) { %>
             <p style="margin-top: 5px;">
                 <strong>Solicitante:</strong> <%= htmlspecialchars(quote.solicitante_nome) %> 
                 (CNPJ: <%= htmlspecialchars(quote.solicitante_cnpj) %>)
@@ -67,9 +67,9 @@
                 <tr>
                     <td><%= htmlspecialchars(item.descricao) %></td>
                     <td style="text-align: center;"><%= htmlspecialchars(item.unidade ?? 'UN') %></td>
-                    <td style="text-align: center;"><%= number_format(item.quantidade, 2, ',', '.') %></td>
-                    <td style="text-align: right;"><%= number_format(item.final_price, 2, ',', '.') %></td>
-                    <td style="text-align: right;"><%= number_format(item.total_price, 2, ',', '.') %></td>
+                    <td style="text-align: center;"><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                    <td style="text-align: right;"><%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                    <td style="text-align: right;"><%= Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
                 </tr>
                 <% }); %>
             </tbody>
@@ -78,11 +78,11 @@
         <div class="summary">
             <div class="summary-row">
                 <span>Subtotal:</span>
-                <span>R$ <%= number_format(grandTotal, 2, ',', '.') %></span>
+                <span>R$ <%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
             </div>
             <div class="summary-row summary-total">
                 <span>Total a Pagar:</span>
-                <span>R$ <%= number_format(grandTotal, 2, ',', '.') %></span>
+                <span>R$ <%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
             </div>
         </div>
         
@@ -90,7 +90,7 @@
         
         <div class="notes">
             <strong>Observações:</strong><br>
-            <% if (!empty(company.detalhes_adicionais)) { %>
+            <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
                 <%= company.detalhes_adicionais %>
             <% } else { %>
                 Obrigado pela preferência!

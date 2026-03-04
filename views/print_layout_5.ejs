@@ -39,11 +39,11 @@
         <div class="col" style="text-align: right;">
             <strong>ORÇAMENTO</strong><br>
             #<%= quote.id %><br>
-            <%= date('d/m/Y', strtotime(quote.data_criacao)) %>
+            <%= new Date(quote.data_criacao).toLocaleDateString('pt-BR') %>
         </div>
     </div>
 
-    <% if (!empty(quote.solicitante_nome)) { %>
+    <% if (!(!quote.solicitante_nome || quote.solicitante_nome.length === 0)) { %>
     <div class="grid" style="margin-bottom: 20px; border-bottom: 1px dashed #e67e22; padding-bottom: 20px;">
         <div class="col">
             <strong>SOLICITANTE</strong><br>
@@ -70,20 +70,20 @@
             <tr>
                 <td><%= htmlspecialchars(item.descricao) %></td>
                 <td><%= htmlspecialchars(item.unidade ?? 'UN') %></td>
-                <td><%= number_format(item.quantidade, 2, ',', '.') %></td>
-                <td>R$ <%= number_format(item.final_price, 2, ',', '.') %></td>
-                <td style="text-align: right;">R$ <%= number_format(item.total_price, 2, ',', '.') %></td>
+                <td><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td>R$ <%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                <td style="text-align: right;">R$ <%= Number(item.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
             </tr>
             <% }); %>
             <tr class="total-row">
                 <td colspan="3" style="text-align: right; padding-right: 20px;">TOTAL</td>
-                <td style="text-align: right;">R$ <%= number_format(grandTotal, 2, ',', '.') %></td>
+                <td style="text-align: right;">R$ <%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
             </tr>
         </tbody>
     </table>
     
     <div class="rich-text">
-        <% if (!empty(company.detalhes_adicionais)) { %>
+        <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
             <%= company.detalhes_adicionais %>
         <% } else { %>
             <p>Orçamento sujeito a aprovação.</p>
@@ -91,7 +91,7 @@
     </div>
     
     <div class="footer">
-        Gerado digitalmente em <%= date('d/m/Y H:i') %>
+        Gerado digitalmente em <%= new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) %>
     </div>
 </body>
 </html>
