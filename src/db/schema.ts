@@ -1,5 +1,37 @@
-import { mysqlTable, serial, varchar, text, int, decimal, datetime, tinyint } from 'drizzle-orm/mysql-core';
+import { mysqlTable, serial, varchar, text, int, decimal, datetime, tinyint, json, mysqlEnum } from 'drizzle-orm/mysql-core';
+import { sql } from 'drizzle-orm';
 
+// ── Users ──
+export const usuarios = mysqlTable('usuarios', {
+  id: serial('id').primaryKey(),
+  username: varchar('username', { length: 100 }).notNull(),
+  password_hash: varchar('password_hash', { length: 255 }).notNull(),
+  nome_completo: varchar('nome_completo', { length: 255 }),
+  role: varchar('role', { length: 20 }).notNull().default('user'),
+  created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updated_at: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deleted_at: datetime('deleted_at'),
+  created_by: int('created_by'),
+  updated_by: int('updated_by'),
+  deleted_by: int('deleted_by'),
+});
+
+// ── Audit Log ──
+export const audit_log = mysqlTable('audit_log', {
+  id: serial('id').primaryKey(),
+  user_id: int('user_id').notNull(),
+  username: varchar('username', { length: 100 }).notNull(),
+  action: varchar('action', { length: 50 }).notNull(),
+  entity: varchar('entity', { length: 50 }).notNull(),
+  entity_id: int('entity_id'),
+  details: text('details'),
+  old_data: text('old_data'),
+  new_data: text('new_data'),
+  ip_address: varchar('ip_address', { length: 45 }),
+  created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ── Companies ──
 export const empresas = mysqlTable('empresas', {
   id: serial('id').primaryKey(),
   nome: varchar('nome', { length: 255 }).notNull(),
@@ -13,8 +45,15 @@ export const empresas = mysqlTable('empresas', {
   smtp_user: varchar('smtp_user', { length: 255 }),
   smtp_pass: varchar('smtp_pass', { length: 255 }),
   smtp_secure: varchar('smtp_secure', { length: 20 }),
+  created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updated_at: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deleted_at: datetime('deleted_at'),
+  created_by: int('created_by'),
+  updated_by: int('updated_by'),
+  deleted_by: int('deleted_by'),
 });
 
+// ── Quotes ──
 export const orcamentos = mysqlTable('orcamentos', {
   id: serial('id').primaryKey(),
   titulo: varchar('titulo', { length: 255 }).notNull(),
@@ -28,8 +67,15 @@ export const orcamentos = mysqlTable('orcamentos', {
   template3_id: int('template3_id').default(3),
   solicitante_nome: varchar('solicitante_nome', { length: 255 }),
   solicitante_cnpj: varchar('solicitante_cnpj', { length: 20 }),
+  created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updated_at: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deleted_at: datetime('deleted_at'),
+  created_by: int('created_by'),
+  updated_by: int('updated_by'),
+  deleted_by: int('deleted_by'),
 });
 
+// ── Quote Items ──
 export const itens_orcamento = mysqlTable('itens_orcamento', {
   id: serial('id').primaryKey(),
   orcamento_id: int('orcamento_id').notNull().references(() => orcamentos.id, { onDelete: 'cascade' }),

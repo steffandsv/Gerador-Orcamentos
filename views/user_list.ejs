@@ -1,0 +1,55 @@
+<%- include('layout_header') %>
+<h2>Gerenciamento de Usuários</h2>
+<div style="margin-bottom: 15px;">
+    <a href="/usuarios/form" class="btn">Novo Usuário</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Usuário</th>
+            <th>Nome Completo</th>
+            <th>Perfil</th>
+            <th>Criado em</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% if (!users || users.length === 0) { %>
+        <tr>
+            <td colspan="6" style="text-align:center;">Nenhum usuário cadastrado.</td>
+        </tr>
+        <% } else { %>
+            <% users.forEach(function(u) { %>
+            <tr>
+                <td><%= u.id %></td>
+                <td><%= u.username %></td>
+                <td><%= u.nome_completo || '-' %></td>
+                <td>
+                    <span style="background:<%= u.role === 'admin' ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)' %>; color:<%= u.role === 'admin' ? '#fca5a5' : '#93c5fd' %>; padding:3px 10px; border-radius:12px; font-size:0.85em; font-weight:600;">
+                        <%= u.role === 'admin' ? 'Admin' : 'Usuário' %>
+                    </span>
+                </td>
+                <td><%= u.created_at ? new Date(u.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-' %></td>
+                <td>
+                    <div style="display:flex; gap:5px;">
+                        <a href="/usuarios/form?id=<%= u.id %>" class="btn btn-small btn-secondary" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <% if (u.username !== 'admin') { %>
+                        <form action="/usuarios/delete" method="POST" onsubmit="return confirm('Tem certeza que deseja desativar este usuário?');" style="margin:0;">
+                            <input type="hidden" name="id" value="<%= u.id %>">
+                            <button type="submit" class="btn btn-small btn-danger" title="Desativar">
+                                <i class="fas fa-user-slash"></i>
+                            </button>
+                        </form>
+                        <% } %>
+                    </div>
+                </td>
+            </tr>
+            <% }); %>
+        <% } %>
+    </tbody>
+</table>
+<%- include('layout_footer') %>

@@ -4,6 +4,7 @@ import { orcamentos, empresas, itens_orcamento } from '../db/schema';
 import { eq, like, sql } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
 import multer from 'multer';
+import { logAudit } from '../lib/audit';
 
 export const apiRouter = Router();
 
@@ -34,6 +35,7 @@ apiRouter.get('/search_solicitante', async (req, res) => {
 // POST /api/test_smtp
 apiRouter.post('/test_smtp', async (req, res) => {
     try {
+        const currentUser = res.locals.currentUser;
         const { host, port, user, pass, secure } = req.body;
         const transporter = nodemailer.createTransport({
             host,
@@ -43,6 +45,16 @@ apiRouter.post('/test_smtp', async (req, res) => {
         });
 
         await transporter.verify();
+
+        await logAudit({
+            userId: currentUser.id,
+            username: currentUser.username,
+            action: 'test_smtp',
+            entity: 'smtp',
+            details: `Teste SMTP realizado: ${host}:${port} (user: ${user})`,
+            ipAddress: req.ip ?? null,
+        });
+
         res.json({ success: true, message: 'Conexão SMTP bem-sucedida! Pronto para enviar e-mails.' });
     } catch (e: any) {
         res.json({ success: false, message: 'Erro de conexão: ' + e.message });
@@ -58,6 +70,7 @@ const pdfFields = upload.fields([
 
 apiRouter.post('/send_budget', pdfFields, async (req, res) => {
     try {
+        const currentUser = res.locals.currentUser;
         const quoteId = Number.parseInt(req.body.quote_id);
         const recipientEmail = req.body.recipient_email;
 
@@ -209,6 +222,18 @@ apiRouter.post('/send_budget', pdfFields, async (req, res) => {
                 });
 
                 results.push(`${company.nome}: ✅ Enviado.`);
+
+                await logAudit({
+                    userId: currentUser.id,
+                    username: currentUser.username,
+                    action: 'send_email',
+                    entity: 'orcamento',
+                    entityId: quoteId,
+                    details: `Email enviado para ${recipientEmail} via ${company.nome} (${company.smtp_user})`,
+                    newData: { recipientEmail, company: company.nome, subject },
+                    ipAddress: req.ip ?? null,
+                });
+
             } catch (emailErr: any) {
                 results.push(`${company.nome}: ❌ ${emailErr.message}`);
                 allSuccess = false;

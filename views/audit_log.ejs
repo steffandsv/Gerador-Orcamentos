@@ -1,0 +1,79 @@
+<%- include('layout_header') %>
+<h2>Log de Auditoria</h2>
+<p style="color:#94a3b8; margin-bottom:15px;">Registro de todas as ações realizadas no sistema.</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Data/Hora</th>
+            <th>Usuário</th>
+            <th>Ação</th>
+            <th>Entidade</th>
+            <th>ID</th>
+            <th>Detalhes</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% if (!logs || logs.length === 0) { %>
+        <tr>
+            <td colspan="6" style="text-align:center;">Nenhum registro encontrado.</td>
+        </tr>
+        <% } else { %>
+            <% 
+                const actionLabels = {
+                    'login': '🔑 Login',
+                    'logout': '🚪 Logout',
+                    'create': '✅ Criar',
+                    'update': '✏️ Editar',
+                    'delete': '🗑️ Excluir',
+                    'send_email': '📧 Email',
+                    'test_smtp': '🔧 SMTP',
+                    'generate_pdf': '📄 PDF',
+                    'restore': '♻️ Restaurar',
+                };
+                const actionColors = {
+                    'login': '#22c55e',
+                    'logout': '#94a3b8',
+                    'create': '#3b82f6',
+                    'update': '#f59e0b',
+                    'delete': '#ef4444',
+                    'send_email': '#8b5cf6',
+                    'test_smtp': '#06b6d4',
+                    'generate_pdf': '#10b981',
+                    'restore': '#6366f1',
+                };
+            %>
+            <% logs.forEach(function(log) { %>
+            <tr>
+                <td style="white-space:nowrap; font-size:0.85em;">
+                    <%= log.created_at ? new Date(log.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-' %>
+                </td>
+                <td>
+                    <strong><%= log.username %></strong>
+                </td>
+                <td>
+                    <span style="color:<%= actionColors[log.action] || '#94a3b8' %>; font-weight:600;">
+                        <%= actionLabels[log.action] || log.action %>
+                    </span>
+                </td>
+                <td><%= log.entity %></td>
+                <td><%= log.entity_id || '-' %></td>
+                <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; font-size:0.85em;">
+                    <%= log.details || '-' %>
+                </td>
+            </tr>
+            <% }); %>
+        <% } %>
+    </tbody>
+</table>
+
+<div style="display:flex; justify-content:center; gap:10px; margin-top:20px;">
+    <% if (page > 1) { %>
+        <a href="/auditoria?page=<%= page - 1 %>" class="btn btn-small">← Anterior</a>
+    <% } %>
+    <span style="padding:8px 16px; color:#94a3b8;">Página <%= page %></span>
+    <% if (logs && logs.length >= 50) { %>
+        <a href="/auditoria?page=<%= page + 1 %>" class="btn btn-small">Próxima →</a>
+    <% } %>
+</div>
+<%- include('layout_footer') %>

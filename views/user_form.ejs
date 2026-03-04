@@ -1,0 +1,43 @@
+<%- include('layout_header') %>
+<h2><%= user.id ? 'Editar Usuário' : 'Novo Usuário' %></h2>
+
+<form method="POST" action="/usuarios/save" style="max-width: 500px;">
+    <% if (user.id) { %>
+        <input type="hidden" name="id" value="<%= user.id %>">
+    <% } %>
+
+    <div style="margin-bottom: 15px;">
+        <label for="username" style="display:block; margin-bottom:5px; font-weight:600;">Usuário *</label>
+        <input type="text" id="username" name="username" value="<%= user.username || '' %>" required
+            class="form-control" style="width:100%; padding:10px; border:1px solid rgba(100,116,139,0.4); border-radius:6px; background:rgba(15,23,42,0.6); color:#e2e8f0;">
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label for="password" style="display:block; margin-bottom:5px; font-weight:600;">
+            Senha <%= user.id ? '(deixe em branco para manter a atual)' : '*' %>
+        </label>
+        <input type="password" id="password" name="password" <%= user.id ? '' : 'required' %>
+            class="form-control" style="width:100%; padding:10px; border:1px solid rgba(100,116,139,0.4); border-radius:6px; background:rgba(15,23,42,0.6); color:#e2e8f0;">
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label for="nome_completo" style="display:block; margin-bottom:5px; font-weight:600;">Nome Completo</label>
+        <input type="text" id="nome_completo" name="nome_completo" value="<%= user.nome_completo || '' %>"
+            class="form-control" style="width:100%; padding:10px; border:1px solid rgba(100,116,139,0.4); border-radius:6px; background:rgba(15,23,42,0.6); color:#e2e8f0;">
+    </div>
+
+    <div style="margin-bottom: 20px;">
+        <label for="role" style="display:block; margin-bottom:5px; font-weight:600;">Perfil</label>
+        <select id="role" name="role" 
+            style="width:100%; padding:10px; border:1px solid rgba(100,116,139,0.4); border-radius:6px; background:rgba(15,23,42,0.6); color:#e2e8f0;">
+            <option value="user" <%= (user.role || 'user') === 'user' ? 'selected' : '' %>>Usuário</option>
+            <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Administrador</option>
+        </select>
+    </div>
+
+    <div style="display:flex; gap:10px;">
+        <button type="submit" class="btn"><i class="fas fa-save"></i> Salvar</button>
+        <a href="/usuarios" class="btn" style="background:#64748b;">Cancelar</a>
+    </div>
+</form>
+<%- include('layout_footer') %>

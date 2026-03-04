@@ -16,12 +16,36 @@
 </head>
 <body>
     <header class="main-header">
-        <div class="container">
-            <h1><a href="/">Gerador de Orçamentos</a></h1>
-            <nav>
-                <a href="/empresas">Empresas</a>
-                <a href="/orcamentos">Orçamentos</a>
-            </nav>
+        <div class="container" style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:20px;">
+                <h1><a href="/">Gerador de Orçamentos</a></h1>
+                <nav>
+                    <a href="/empresas">Empresas</a>
+                    <a href="/orcamentos">Orçamentos</a>
+                    <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'admin') { %>
+                        <a href="/usuarios">Usuários</a>
+                    <% } %>
+                    <a href="/auditoria">Logs</a>
+                </nav>
+            </div>
+            <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span style="color:#94a3b8; font-size:0.85em;">
+                    <i class="fas fa-user-circle" style="margin-right:4px;"></i>
+                    <strong style="color:#e2e8f0;"><%= currentUser.username %></strong>
+                    <span style="background:<%= currentUser.role === 'admin' ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)' %>; color:<%= currentUser.role === 'admin' ? '#fca5a5' : '#93c5fd' %>; padding:2px 8px; border-radius:10px; font-size:0.8em; margin-left:4px;">
+                        <%= currentUser.role === 'admin' ? 'Admin' : 'User' %>
+                    </span>
+                </span>
+                <form action="/logout" method="POST" style="margin:0;">
+                    <button type="submit" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:0.8em; transition:all 0.2s;" 
+                        onmouseover="this.style.background='rgba(239,68,68,0.3)'" 
+                        onmouseout="this.style.background='rgba(239,68,68,0.15)'">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </form>
+            </div>
+            <% } %>
         </div>
     </header>
     <main class="container">
