@@ -18,8 +18,7 @@ COPY --from=builder /app/views ./views
 # Copy static assets
 COPY --from=builder /app/style.css ./style.css
 COPY --from=builder /app/js ./js
-COPY --from=builder /app/arquivos ./arquivos
-
+RUN mkdir -p ./arquivos
 EXPOSE 3000
 
 # Start Express server
