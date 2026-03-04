@@ -8,43 +8,384 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // 1. Items Table Logic
+    // ========================================================================
+    // PRICING ENGINE
+    // ========================================================================
+
+    function calcularPrecoVenda(precoCompra) {
+        if (precoCompra == null || precoCompra <= 0) return null;
+
+        const expoente = Math.pow(precoCompra / 150, 0.7);
+        const margemDinamica = 0.2 + (0.5 / (1 + expoente));
+        const precoBase = precoCompra / (1 - margemDinamica);
+
+        let precoBaseFormatado = 0;
+        if (precoBase < 100) {
+            precoBaseFormatado = Math.floor(precoBase * 10) / 10 - 0.01;
+        } else if (precoBase < 1000) {
+            precoBaseFormatado = Math.floor(precoBase) - 0.01;
+        } else if (precoBase < 10000) {
+            precoBaseFormatado = Math.floor(precoBase / 10) * 10 - 1;
+        } else {
+            precoBaseFormatado = Math.floor(precoBase / 100) * 100 - 10;
+        }
+
+        const precoMinimo = precoCompra / 0.8;
+
+        if (precoBaseFormatado >= precoMinimo) {
+            return Number(precoBaseFormatado.toFixed(2));
+        }
+
+        let precoMinimoFormatado = 0;
+        if (precoMinimo < 100) {
+            precoMinimoFormatado = Math.ceil((precoMinimo + 0.01) * 10) / 10 - 0.01;
+        } else if (precoMinimo < 1000) {
+            precoMinimoFormatado = Math.ceil(precoMinimo + 0.01) - 0.01;
+        } else if (precoMinimo < 10000) {
+            precoMinimoFormatado = Math.ceil((precoMinimo + 1) / 10) * 10 - 1;
+        } else {
+            precoMinimoFormatado = Math.ceil((precoMinimo + 10) / 100) * 100 - 10;
+        }
+
+        return Number(precoMinimoFormatado.toFixed(2));
+    }
+
+    function calcularComissao(margemLucro) {
+        if (margemLucro == null || isNaN(margemLucro)) return null;
+        if (margemLucro < 0.20) return 0.05;
+        if (margemLucro < 0.25) return 0.10;
+        if (margemLucro < 0.30) return 0.15;
+        if (margemLucro < 0.35) return 0.20;
+        return 0.40;
+    }
+
+    function getComissaoTier(rate) {
+        if (rate == null) return { label: '—', cls: 'tier-none' };
+        if (rate <= 0.05) return { label: '5%', cls: 'tier-1' };
+        if (rate <= 0.10) return { label: '10%', cls: 'tier-2' };
+        if (rate <= 0.15) return { label: '15%', cls: 'tier-3' };
+        if (rate <= 0.20) return { label: '20%', cls: 'tier-4' };
+        return { label: '40%', cls: 'tier-5' };
+    }
+
+    function formatBRL(val) {
+        if (val == null || isNaN(val)) return 'R$ 0,00';
+        return 'R$ ' + val.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function formatPct(val) {
+        if (val == null || isNaN(val)) return '0,0%';
+        return (val * 100).toFixed(1).replace('.', ',') + '%';
+    }
+
+    // ========================================================================
+    // ITEMS TABLE
+    // ========================================================================
+
     try {
         const tableBody = document.querySelector('#itemsTable tbody');
         const addItemBtn = document.getElementById('addItemBtn');
         let itemIndex = 0;
+        let nextCodigo = 1;
 
-        // If table exists, proceed
         if (tableBody && addItemBtn) {
-            window.createRow = function(desc = '', unit = 'UN', qty = '', price = '') {
-                // Ensure values are safe
-                unit = unit || 'UN';
-                qty = qty || '1';
-                price = price || '0.00';
+            /**
+             * Creates a new table row with all 7 columns + metrics panel
+             * @param {Object} data - Item data (optional fields)
+             */
+            window.createRow = function(data) {
+                data = data || {};
+                const idx = itemIndex;
+                const codigo = data.codigo || nextCodigo;
+                const desc = data.descricao || '';
+                const qty = data.quantidade || '1';
+                const vCompra = data.valor_compra || '';
+                const vVenda = data.valor_venda || '';
+                const autoPreco = data.auto_preco == 1 || data.auto_preco === true;
+                const marca = data.marca_modelo || '';
+                const link = data.link_compra || '';
 
                 const tr = document.createElement('tr');
+                tr.className = 'rich-row';
+                tr.dataset.idx = idx;
+
                 tr.innerHTML = `
-                    <td>
-                        <input type="text" name="items[${itemIndex}][descricao]" value="${desc}" placeholder="Descrição do item" class="form-control" required style="width:100%">
+                    <td class="cell-codigo">
+                        <input type="number" name="items[${idx}][codigo]" value="${codigo}" class="input-codigo" min="1">
                     </td>
-                    <td>
-                        <input type="text" name="items[${itemIndex}][unidade]" value="${unit}" placeholder="UN" class="form-control" required style="width:100%; text-align:center;">
+                    <td class="cell-desc">
+                        <textarea name="items[${idx}][descricao]" placeholder="Descrição do item" class="input-desc" rows="1" required>${desc}</textarea>
                     </td>
-                    <td>
-                        <input type="number" name="items[${itemIndex}][quantidade]" value="${qty}" step="0.01" min="0.01" placeholder="1" class="form-control" required style="width:100%">
+                    <td class="cell-qty">
+                        <input type="number" name="items[${idx}][quantidade]" value="${qty}" step="0.01" min="0.01" placeholder="1" class="input-qty" required>
                     </td>
-                    <td>
-                        <input type="number" name="items[${itemIndex}][preco_unitario]" value="${price}" step="0.01" min="0.01" placeholder="0.00" class="form-control" required style="width:100%">
+                    <td class="cell-compra">
+                        <div class="input-money-wrapper">
+                            <span class="money-prefix">R$</span>
+                            <input type="number" name="items[${idx}][valor_compra]" value="${vCompra}" step="0.01" min="0.01" placeholder="0,00" class="input-compra" required>
+                        </div>
                     </td>
-                    <td style="text-align:center;">
-                        <button type="button" class="btn btn-small btn-danger remove-row" title="Remover Item">
+                    <td class="cell-venda">
+                        <div class="venda-group">
+                            <div class="input-money-wrapper">
+                                <span class="money-prefix">R$</span>
+                                <input type="number" name="items[${idx}][valor_venda]" value="${vVenda}" step="0.01" min="0.01" placeholder="0,00" class="input-venda" ${autoPreco ? 'readonly' : ''}>
+                            </div>
+                            <input type="hidden" name="items[${idx}][auto_preco]" value="${autoPreco ? '1' : '0'}" class="hidden-auto">
+                            <button type="button" class="auto-toggle ${autoPreco ? 'active' : ''}" title="Auto-calcular preço de venda">
+                                <i class="fas ${autoPreco ? 'fa-lock' : 'fa-magic'}"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="cell-marca">
+                        <input type="text" name="items[${idx}][marca_modelo]" value="${marca}" placeholder="Ex: Samsung X200" class="input-marca">
+                    </td>
+                    <td class="cell-link">
+                        <div class="link-group">
+                            <input type="url" name="items[${idx}][link_compra]" value="${link}" placeholder="https://..." class="input-link">
+                            <a href="${link || '#'}" target="_blank" class="link-preview ${link ? '' : 'hidden'}" title="Abrir link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </td>
+                    <td class="cell-actions">
+                        <button type="button" class="btn-icon btn-remove remove-row" title="Remover Item">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
                 `;
+
+                // Metrics panel row - built via DOM API for reliable class assignment
+                const metricsRow = document.createElement('tr');
+                metricsRow.className = 'metrics-row';
+                metricsRow.dataset.parentIdx = idx;
+
+                const metricsTd = document.createElement('td');
+                metricsTd.setAttribute('colspan', '8');
+
+                const panel = document.createElement('div');
+                panel.className = 'metrics-panel';
+
+                // Build each metric element explicitly
+                const lucroItem = document.createElement('div');
+                lucroItem.className = 'metric-item';
+                const lucroLabel = document.createElement('span');
+                lucroLabel.className = 'metric-label';
+                lucroLabel.textContent = 'Lucro Bruto';
+                const lucroValSpan = document.createElement('span');
+                lucroValSpan.className = 'metric-value';
+                lucroValSpan.setAttribute('data-role', 'lucro-val');
+                lucroValSpan.textContent = '\u2014';
+                lucroItem.appendChild(lucroLabel);
+                lucroItem.appendChild(lucroValSpan);
+
+                const lucroPctItem = document.createElement('div');
+                lucroPctItem.className = 'metric-item';
+                const lucroPctLabel = document.createElement('span');
+                lucroPctLabel.className = 'metric-label';
+                lucroPctLabel.textContent = '% Lucro';
+                const lucroPctSpan = document.createElement('span');
+                lucroPctSpan.classList.add('metric-badge', 'tier-none');
+                lucroPctSpan.setAttribute('data-role', 'lucro-pct');
+                lucroPctSpan.textContent = '\u2014';
+                lucroPctItem.appendChild(lucroPctLabel);
+                lucroPctItem.appendChild(lucroPctSpan);
+
+                const comPctItem = document.createElement('div');
+                comPctItem.className = 'metric-item';
+                const comPctLabel = document.createElement('span');
+                comPctLabel.className = 'metric-label';
+                comPctLabel.textContent = '% Comissão';
+                const comPctSpan = document.createElement('span');
+                comPctSpan.classList.add('metric-badge', 'tier-none');
+                comPctSpan.setAttribute('data-role', 'comissao-pct');
+                comPctSpan.textContent = '\u2014';
+                comPctItem.appendChild(comPctLabel);
+                comPctItem.appendChild(comPctSpan);
+
+                const comValItem = document.createElement('div');
+                comValItem.className = 'metric-item';
+                const comValLabel = document.createElement('span');
+                comValLabel.className = 'metric-label';
+                comValLabel.textContent = 'Comissão (R$)';
+                const comValSpan = document.createElement('span');
+                comValSpan.className = 'metric-value';
+                comValSpan.setAttribute('data-role', 'comissao-val');
+                comValSpan.textContent = '\u2014';
+                comValItem.appendChild(comValLabel);
+                comValItem.appendChild(comValSpan);
+
+                panel.appendChild(lucroItem);
+                panel.appendChild(lucroPctItem);
+                panel.appendChild(comPctItem);
+                panel.appendChild(comValItem);
+
+                metricsTd.appendChild(panel);
+                metricsRow.appendChild(metricsTd);
+
                 tableBody.appendChild(tr);
+                tableBody.appendChild(metricsRow);
+
+                // Auto-grow textarea
+                const textarea = tr.querySelector('.input-desc');
+                textarea.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = this.scrollHeight + 'px';
+                });
+
+                // Link preview update
+                const linkInput = tr.querySelector('.input-link');
+                const linkPreview = tr.querySelector('.link-preview');
+                linkInput.addEventListener('input', function() {
+                    if (this.value) {
+                        linkPreview.href = this.value;
+                        linkPreview.classList.remove('hidden');
+                    } else {
+                        linkPreview.classList.add('hidden');
+                    }
+                });
+
+                // Auto-toggle button
+                const autoBtn = tr.querySelector('.auto-toggle');
+                const vendaInput = tr.querySelector('.input-venda');
+                const hiddenAuto = tr.querySelector('.hidden-auto');
+                const compraInput = tr.querySelector('.input-compra');
+
+                autoBtn.addEventListener('click', function() {
+                    const isActive = this.classList.toggle('active');
+                    hiddenAuto.value = isActive ? '1' : '0';
+                    const icon = this.querySelector('i');
+
+                    if (isActive) {
+                        icon.className = 'fas fa-lock';
+                        vendaInput.readOnly = true;
+                        vendaInput.classList.add('readonly');
+                        const compra = parseFloat(compraInput.value);
+                        if (compra > 0) {
+                            const venda = calcularPrecoVenda(compra);
+                            if (venda !== null) vendaInput.value = venda.toFixed(2);
+                        }
+                    } else {
+                        icon.className = 'fas fa-magic';
+                        vendaInput.readOnly = false;
+                        vendaInput.classList.remove('readonly');
+                    }
+                    updateMetrics(tr, metricsRow);
+                    updateSummary();
+                });
+
+                // Real-time recalc on inputs
+                compraInput.addEventListener('input', function() {
+                    if (autoBtn.classList.contains('active')) {
+                        const compra = parseFloat(this.value);
+                        if (compra > 0) {
+                            const venda = calcularPrecoVenda(compra);
+                            if (venda !== null) vendaInput.value = venda.toFixed(2);
+                        } else {
+                            vendaInput.value = '';
+                        }
+                    }
+                    updateMetrics(tr, metricsRow);
+                    updateSummary();
+                });
+
+                vendaInput.addEventListener('input', function() {
+                    updateMetrics(tr, metricsRow);
+                    updateSummary();
+                });
+
+                tr.querySelector('.input-qty').addEventListener('input', function() {
+                    updateMetrics(tr, metricsRow);
+                    updateSummary();
+                });
+
+                // Initial metrics if editing
+                if (vCompra && vVenda) {
+                    if (autoPreco) {
+                        vendaInput.classList.add('readonly');
+                    }
+                    updateMetrics(tr, metricsRow);
+                }
+
+                nextCodigo = Math.max(nextCodigo, codigo + 1);
                 itemIndex++;
+                updateSummary();
             };
+
+            function updateMetrics(dataRow, metricsRow) {
+                const compra = parseFloat(dataRow.querySelector('.input-compra').value) || 0;
+                const venda = parseFloat(dataRow.querySelector('.input-venda').value) || 0;
+                const qty = parseFloat(dataRow.querySelector('.input-qty').value) || 0;
+
+                const lucroBrutoUnit = venda - compra;
+                const lucroBrutoTotal = lucroBrutoUnit * qty;
+                const margemLucro = venda > 0 ? lucroBrutoUnit / venda : 0;
+                const taxaComissao = calcularComissao(margemLucro);
+                const comissaoValor = taxaComissao !== null ? taxaComissao * lucroBrutoTotal : 0;
+
+                const lucroValEl = metricsRow.querySelector('[data-role="lucro-val"]');
+                const lucroPctEl = metricsRow.querySelector('[data-role="lucro-pct"]');
+                const comissaoPctEl = metricsRow.querySelector('[data-role="comissao-pct"]');
+                const comissaoValEl = metricsRow.querySelector('[data-role="comissao-val"]');
+
+                if (!lucroValEl || !lucroPctEl || !comissaoPctEl || !comissaoValEl) return;
+
+                if (compra > 0 && venda > 0) {
+                    lucroValEl.textContent = formatBRL(lucroBrutoTotal);
+                    lucroPctEl.textContent = formatPct(margemLucro);
+
+                    // Color-code lucro
+                    lucroPctEl.className = 'metric-badge';
+                    if (margemLucro < 0.20) lucroPctEl.classList.add('tier-1');
+                    else if (margemLucro < 0.30) lucroPctEl.classList.add('tier-3');
+                    else lucroPctEl.classList.add('tier-5');
+
+                    const tier = getComissaoTier(taxaComissao);
+                    comissaoPctEl.textContent = tier.label;
+                    comissaoPctEl.className = 'metric-badge ' + tier.cls;
+
+                    comissaoValEl.textContent = formatBRL(comissaoValor);
+                } else {
+                    lucroValEl.textContent = '\u2014';
+                    lucroPctEl.textContent = '\u2014';
+                    lucroPctEl.className = 'metric-badge tier-none';
+                    comissaoPctEl.textContent = '\u2014';
+                    comissaoPctEl.className = 'metric-badge tier-none';
+                    comissaoValEl.textContent = '\u2014';
+                }
+            }
+
+            function updateSummary() {
+                const rows = tableBody.querySelectorAll('.rich-row');
+                let totalCompra = 0, totalVenda = 0, totalLucro = 0, totalComissao = 0;
+                let count = 0;
+
+                rows.forEach(row => {
+                    const compra = parseFloat(row.querySelector('.input-compra').value) || 0;
+                    const venda = parseFloat(row.querySelector('.input-venda').value) || 0;
+                    const qty = parseFloat(row.querySelector('.input-qty').value) || 0;
+
+                    totalCompra += compra * qty;
+                    totalVenda += venda * qty;
+
+                    const lucroUnit = venda - compra;
+                    const lucroTotal = lucroUnit * qty;
+                    totalLucro += lucroTotal;
+
+                    const margem = venda > 0 ? lucroUnit / venda : 0;
+                    const taxa = calcularComissao(margem);
+                    if (taxa !== null) totalComissao += taxa * lucroTotal;
+
+                    count++;
+                });
+
+                const el = (id) => document.getElementById(id);
+                el('summaryCount').textContent = count;
+                el('summaryCompra').textContent = formatBRL(totalCompra);
+                el('summaryVenda').textContent = formatBRL(totalVenda);
+                el('summaryLucro').textContent = formatBRL(totalLucro);
+                el('summaryComissao').textContent = formatBRL(totalComissao);
+            }
 
             // Initial row
             if (tableBody.children.length === 0) createRow();
@@ -53,7 +394,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             tableBody.addEventListener('click', function(e) {
                 if (e.target.closest('.remove-row')) {
-                    e.target.closest('tr').remove();
+                    const tr = e.target.closest('tr');
+                    const metricsRow = tr.nextElementSibling;
+                    if (metricsRow && metricsRow.classList.contains('metrics-row')) {
+                        metricsRow.remove();
+                    }
+                    tr.remove();
+                    updateSummary();
                 }
             });
 
@@ -61,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('quoteForm');
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    const rows = tableBody.querySelectorAll('tr');
+                    const rows = tableBody.querySelectorAll('.rich-row');
                     if (rows.length === 0) {
                         e.preventDefault();
                         showAlert('Adicione pelo menos um item ao orçamento.', 'Erro', 'error');
@@ -70,41 +417,38 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     } catch (e) {
-        console.error("Error in Items Table Loop:", e);
+        console.error("Error in Items Table Logic:", e);
     }
 
-    // 2. CSV Import Logic
+    // ========================================================================
+    // CSV IMPORT
+    // ========================================================================
+
     try {
         const importBtn = document.getElementById('importBtn');
         const csvInput = document.getElementById('csvInput');
         const csvFile = document.getElementById('csvFile');
-        const tableBody = document.querySelector('#itemsTable tbody'); // Re-select to be safe
+        const tableBody = document.querySelector('#itemsTable tbody');
 
         if (importBtn && (csvInput || csvFile)) {
              importBtn.addEventListener('click', function() {
-                let csvText = '';
-                
                 if (csvFile && csvFile.files.length > 0) {
                     const reader = new FileReader();
                     reader.onload = function(e) { processImportContent(e.target.result); };
                     reader.readAsText(csvFile.files[0]);
                     return;
                 } else if (csvInput && csvInput.value.trim() !== "") {
-                    csvText = csvInput.value;
+                    processImportContent(csvInput.value);
                 } else {
                     showAlert('Cole o CSV ou selecione um arquivo.', 'Nenhum dado', 'warning');
                     return;
                 }
-                processImportContent(csvText);
             });
 
             function processImportContent(text) {
                 if (!window.createRow || !tableBody) return;
                 
                 tableBody.innerHTML = '';
-                // itemIndex global reset? We used closure variable itemIndex.
-                // We can't easily reset closure variable unless we expose reset.
-                // Just continue incrementing, keys will be unique enough.
                 
                 let addedCount = 0;
                 const lines = text.split(/\r\n|\n/);
@@ -115,39 +459,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 lines.forEach((line, index) => {
                     if (!line.trim()) return;
-                    // Header check
                     const lineLower = line.toLowerCase();
-                    if (index === 0 && (lineLower.includes('desc') || lineLower.includes('qty') || lineLower.includes('pre') || lineLower.includes('unid'))) {
+                    if (index === 0 && (lineLower.includes('desc') || lineLower.includes('qty') || lineLower.includes('pre') || lineLower.includes('quant'))) {
                          return;
                     }
                     
                     const parts = line.split(delimiter);
                     if (parts.length >= 2) {
                         let desc = parts[0].trim().replace(/^"|"$/g, '');
-                        let unit = 'UN', qty = '1', price = '0';
+                        let qty = '1', vCompra = '0';
 
-                        // Heuristic Layout detection
-                        if (parts.length >= 4) { // Desc; Unit; Qty; Price
-                            unit = parts[1]; qty = parts[2]; price = parts[3];
-                        } else if (parts.length === 3) { 
-                             // Desc; Qty; Price OR Desc; Unit; Qty
-                             // Check 2nd col for number
-                             let p2 = parts[1].trim();
-                             if (isNaN(parseFloat(p2.replace(',','.')))) {
-                                 unit = p2; qty = parts[2]; // Desc; Unit; Qty (No price?)
-                             } else {
-                                 qty = p2; price = parts[2]; // Desc; Qty; Price
-                             }
+                        if (parts.length >= 3) {
+                            qty = parts[1].trim().replace(/^"|"$/g, '').replace(',', '.');
+                            vCompra = parts[2].trim().replace(/^"|"$/g, '').replace(/[^\d.,]/g, '').replace(',', '.');
                         } else {
-                            qty = parts[1]; // Desc; Qty
+                            qty = parts[1].trim().replace(/^"|"$/g, '').replace(',', '.');
                         }
 
-                        // Cleanups
-                        if (typeof unit === 'string') unit = unit.replace(/^"|"$/g, '').trim();
-                        if (typeof qty === 'string') qty = qty.replace(/^"|"$/g, '').replace(',', '.').trim();
-                        if (typeof price === 'string') price = price.replace(/^"|"$/g, '').replace(/[^\d.,]/g, '').replace(',', '.').trim();
-
-                        createRow(desc, unit, qty, price);
+                        createRow({
+                            descricao: desc,
+                            quantidade: qty,
+                            valor_compra: vCompra
+                        });
                         addedCount++;
                     }
                 });
@@ -156,8 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const manualRadio = document.getElementById('mode_manual');
                     if (manualRadio) {
                         manualRadio.checked = true;
-                        // Trigger change
-                        toggleItemMode(); // function defined in HTML script
+                        toggleItemMode();
                     }
                     showAlert(`${addedCount} itens importados!`, 'Sucesso', 'success');
                 } else {
@@ -169,7 +501,10 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error("Error in CSV Logic:", e);
     }
 
-    // 3. Modal Logic
+    // ========================================================================
+    // TEMPLATE MODAL
+    // ========================================================================
+
     try {
         const modal = document.getElementById('templateModal');
         const closeBtn = document.querySelector('.close-modal');
@@ -180,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             buttons.forEach(btn => {
                 btn.addEventListener('click', function(e) {
-                    e.preventDefault(); // Just in case
+                    e.preventDefault();
                     currentTargetInputId = this.dataset.target;
                     modal.style.display = 'block';
                 });
@@ -194,7 +529,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (e.target === modal) modal.style.display = 'none';
             });
 
-            // Template Item Click
             const templateItems = document.querySelectorAll('.template-item');
             templateItems.forEach(item => {
                 item.addEventListener('click', function() {
@@ -203,7 +537,6 @@ document.addEventListener('DOMContentLoaded', function() {
                          const input = document.getElementById(currentTargetInputId);
                          if (input) input.value = templateId;
                          
-                         // Update Button Text
                          const btn = document.querySelector(`button[data-target="${currentTargetInputId}"]`);
                          if (btn) btn.innerHTML = `Modelo ${templateId} (Selecionado) <i class="fas fa-check"></i>`;
                     }

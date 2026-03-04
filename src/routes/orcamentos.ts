@@ -110,10 +110,14 @@ orcamentosRouter.post('/save', async (req, res) => {
                     .filter((item: any) => item.descricao)
                     .map((item: any) => ({
                         orcamento_id,
+                        codigo: item.codigo ? Number.parseInt(item.codigo) : null,
                         descricao: item.descricao,
-                        unidade: item.unidade || 'UN',
                         quantidade: item.quantidade,
-                        preco_unitario: item.preco_unitario
+                        valor_compra: item.valor_compra,
+                        valor_venda: item.valor_venda || null,
+                        auto_preco: item.auto_preco === '1' ? 1 : 0,
+                        marca_modelo: item.marca_modelo || null,
+                        link_compra: item.link_compra || null
                     }));
                 
                 if (itemsToInsert.length > 0) {

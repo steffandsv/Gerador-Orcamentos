@@ -107,7 +107,7 @@
 
     <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h3>Itens do Orçamento</h3>
+            <h3 style="margin:0;">Itens do Orçamento</h3>
             <div class="toggle-container">
                 <label class="switch-label">Modo:</label>
                 <div class="switch-wrapper">
@@ -121,8 +121,8 @@
 
         <div id="importSection">
             <p style="font-size: 0.9em; color: #666;">Cole os dados (CSV) abaixo ou envie um arquivo e clique em "Processar" para preencher a tabela.</p>
-            <p style="font-size: 0.8em; color: #888;">Formatos: <strong>Descrição;Unidade;Quantidade;Preço</strong> ou <strong>Descrição;Quantidade;Preço</strong> (Unit será 'UN')</p>
-            <textarea id="csvInput" rows="3" placeholder="Caneta Azul;CX;10;15.50" style="font-family: monospace; width:100%; box-sizing:border-box;"></textarea>
+            <p style="font-size: 0.8em; color: #888;">Formato: <strong>Descrição;Quantidade;Valor Compra</strong> (demais campos preenchidos manualmente)</p>
+            <textarea id="csvInput" rows="3" placeholder="Caneta Azul;10;15.50" style="font-family: monospace; width:100%; box-sizing:border-box;"></textarea>
             <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
                 <input type="file" id="csvFile" accept=".csv" style="border: 1px solid #ddd; padding: 5px;">
                 <button type="button" class="btn" id="importBtn" style="background: #007bff;">Processar e Preencher Tabela</button>
@@ -131,21 +131,52 @@
         </div>
 
         <div id="manualSection" style="margin-top:20px;">
-            <table id="itemsTable" class="premium-table">
-                <thead>
-                    <tr>
-                        <th style="width: 40%;">Descrição</th>
-                        <th style="width: 10%;">Unidade</th>
-                        <th style="width: 15%;">Qtd</th>
-                        <th style="width: 20%;">Preço Unit. (Vencedora)</th>
-                        <th style="width: 15%;">Ação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Rows added by JS -->
-                </tbody>
-            </table>
-            <button type="button" class="btn" id="addItemBtn" style="margin-top:10px;">+ Adicionar Item</button>
+            <!-- Summary Bar -->
+            <div class="rich-summary-bar" id="summaryBar">
+                <div class="summary-item">
+                    <span class="summary-label">Itens</span>
+                    <span class="summary-value" id="summaryCount">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Total Compra</span>
+                    <span class="summary-value" id="summaryCompra">R$ 0,00</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Total Venda</span>
+                    <span class="summary-value summary-highlight" id="summaryVenda">R$ 0,00</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Lucro Bruto</span>
+                    <span class="summary-value summary-profit" id="summaryLucro">R$ 0,00</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Total Comissão</span>
+                    <span class="summary-value summary-commission" id="summaryComissao">R$ 0,00</span>
+                </div>
+            </div>
+
+            <div class="rich-table-wrapper">
+                <table id="itemsTable" class="rich-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Cód</th>
+                            <th style="min-width: 200px;">Descrição</th>
+                            <th style="width: 80px;">Qtd</th>
+                            <th style="width: 130px;">V. Compra</th>
+                            <th style="width: 180px;">V. Venda</th>
+                            <th style="width: 150px;">Marca/Modelo</th>
+                            <th style="width: 140px;">Link</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows added by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn" id="addItemBtn" style="margin-top:10px;">
+                <i class="fas fa-plus" style="margin-right:6px;"></i> Adicionar Item
+            </button>
         </div>
     </div>
 
@@ -234,12 +265,16 @@
                     if (tbody) tbody.innerHTML = ''; 
 
                     initialItems.forEach(item => {
-                        window.createRow(
-                            item.descricao, 
-                            item.unidade, 
-                            item.quantidade, 
-                            item.preco_unitario
-                        );
+                        window.createRow({
+                            codigo: item.codigo,
+                            descricao: item.descricao, 
+                            quantidade: item.quantidade, 
+                            valor_compra: item.valor_compra,
+                            valor_venda: item.valor_venda,
+                            auto_preco: item.auto_preco,
+                            marca_modelo: item.marca_modelo,
+                            link_compra: item.link_compra
+                        });
                     });
                     
                     const manualRadio = document.getElementById('mode_manual');

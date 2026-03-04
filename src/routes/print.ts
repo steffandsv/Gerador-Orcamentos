@@ -35,7 +35,7 @@ printRouter.get('/', async (req, res) => {
 
         // Calculate Prices
         const processedItems = items.map(item => {
-            let final_price = Number(item.preco_unitario);
+            let final_price = Number(item.valor_venda || item.valor_compra);
             
             if (comp_idx !== 1) {
                 // Loser - Random Increase

@@ -1,4 +1,4 @@
-import { mysqlTable, serial, varchar, text, int, decimal, datetime } from 'drizzle-orm/mysql-core';
+import { mysqlTable, serial, varchar, text, int, decimal, datetime, tinyint } from 'drizzle-orm/mysql-core';
 
 export const empresas = mysqlTable('empresas', {
   id: serial('id').primaryKey(),
@@ -33,8 +33,12 @@ export const orcamentos = mysqlTable('orcamentos', {
 export const itens_orcamento = mysqlTable('itens_orcamento', {
   id: serial('id').primaryKey(),
   orcamento_id: int('orcamento_id').notNull().references(() => orcamentos.id, { onDelete: 'cascade' }),
+  codigo: int('codigo'),
   descricao: varchar('descricao', { length: 255 }).notNull(),
-  unidade: varchar('unidade', { length: 20 }).default('UN'),
   quantidade: decimal('quantidade', { precision: 10, scale: 2 }).notNull(),
-  preco_unitario: decimal('preco_unitario', { precision: 10, scale: 2 }).notNull(),
+  valor_compra: decimal('valor_compra', { precision: 10, scale: 2 }).notNull(),
+  valor_venda: decimal('valor_venda', { precision: 10, scale: 2 }),
+  auto_preco: tinyint('auto_preco').default(0),
+  marca_modelo: varchar('marca_modelo', { length: 255 }),
+  link_compra: varchar('link_compra', { length: 500 }),
 });
