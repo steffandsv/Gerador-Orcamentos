@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         debounceTimer = setTimeout(() => {
-            fetch('index.php?action=search_solicitante&term=' + encodeURIComponent(term))
+            fetch('/api/search_solicitante?term=' + encodeURIComponent(term))
                 .then(response => response.json())
                 .then(data => {
                     listContainer.innerHTML = '';

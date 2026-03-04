@@ -117,7 +117,7 @@
         </thead>
         <tbody>
             <% 
-            grandTotal = 0;
+            var grandTotal = 0;
             items.forEach(function(item) { 
                 grandTotal += item.total_price;
             %>
@@ -141,7 +141,7 @@
     <div class="notes">
         <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
             <div class="rich-text">
-                <%= company.detalhes_adicionais %>
+                <%- company.detalhes_adicionais %>
             </div>
         <% } else { %>
             <p>Condições de Pagamento: A combinar.</p>

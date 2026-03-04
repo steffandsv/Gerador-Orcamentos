@@ -1,3 +1,4 @@
+<%- include('layout_header') %>
 <h2>Empresas Cadastradas</h2>
 <div style="margin-bottom: 15px;">
     <a href="/empresas/form" class="btn">Nova Empresa</a>
@@ -26,9 +27,8 @@
                 <td><%= emp.documento %></td>
                 <td><%= emp.email %></td>
                 <td>
-                    <a href="/empresas/form&id=<%= emp.id %>" class="btn btn-small">Editar</a>
-                    <form action="" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza?');">
-                        <input type="hidden" name="action" value="delete_company">
+                    <a href="/empresas/form?id=<%= emp.id %>" class="btn btn-small">Editar</a>
+                    <form action="/empresas/delete" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza?');">
                         <input type="hidden" name="id" value="<%= emp.id %>">
                         <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                     </form>
@@ -38,3 +38,4 @@
         <% } %>
     </tbody>
 </table>
+<%- include('layout_footer') %>

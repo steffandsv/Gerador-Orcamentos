@@ -85,7 +85,7 @@
                 </tr>
                 <% }); %>
                 <tr class="total-row">
-                    <td colspan="3" style="text-align: right;">TOTAL A PAGAR</td>
+                    <td colspan="4" style="text-align: right;">TOTAL A PAGAR</td>
                     <td style="text-align: right;">R$ <%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
                 </tr>
             </tbody>
@@ -94,7 +94,7 @@
         <div class="footer">
             <div class="label">Notas Adicionais</div>
             <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
-                <%= company.detalhes_adicionais %>
+                <%- company.detalhes_adicionais %>
             <% } else { %>
                 <p>Obrigado.</p>
             <% } %>

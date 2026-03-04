@@ -1,3 +1,4 @@
+<%- include('layout_header') %>
 <h2>Orçamentos Gerados</h2>
 <div style="margin-bottom: 15px;">
     <a href="/orcamentos/form" class="btn">Novo Orçamento</a>
@@ -23,7 +24,7 @@
             <% orcamentos.forEach(function(orc) { %>
             <tr>
                 <td><%= orc.id %></td>
-                <td><%= new Date(orc.data_criacao).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) %></td>
+                <td><%= orc.data_criacao ? new Date(orc.data_criacao).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A' %></td>
                 <td><%= orc.titulo %></td>
                 <td><%= orc.empresa_vencedora ?? 'N/A' %></td>
                 <td><%= orc.variacao_maxima %>%</td>
@@ -39,7 +40,6 @@
                             <i class="fas fa-edit"></i>
                         </a>
                         <form action="/orcamentos/delete" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este orçamento?');" style="margin:0;">
-                            <input type="hidden" name="action" value="delete_quote">
                             <input type="hidden" name="id" value="<%= orc.id %>">
                             <button type="submit" class="btn btn-small btn-danger" title="Excluir">
                                 <i class="fas fa-trash"></i>
@@ -55,10 +55,7 @@
 
 <script>
 function generateQuotes(id) {
-    // Open 3 tabs
     window.open('/print?id=' + id + '&company_index=1', '_blank');
-    // Small delay to ensure browser doesn't block popups if possible, though modern browsers block multiple automatic popups. 
-    // The user might need to allow popups.
     setTimeout(() => {
         window.open('/print?id=' + id + '&company_index=2', '_blank');
     }, 200);
@@ -90,29 +87,17 @@ async function sendEmails() {
     }
 
     const btn = document.getElementById('sendBtn');
-    const status = document.getElementById('statusMsg'); // Re-using existing statusMsg for simplicity, as the new code implies a dynamic status element not present in the modal.
+    const status = document.getElementById('statusMsg');
     
     btn.disabled = true;
     btn.innerText = 'Processando...';
     status.style.display = 'block';
-    status.innerText = 'Iniciando processo...'; // Set initial status
+    status.innerText = 'Iniciando processo...';
 
     try {
-        // Create Overlay
         const overlay = document.createElement('div');
         overlay.id = 'pdf-generation-overlay';
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.background = 'rgba(0,0,0,0.8)';
-        overlay.style.zIndex = '9999';
-        overlay.style.display = 'flex';
-        overlay.style.flexDirection = 'column';
-        overlay.style.justifyContent = 'center';
-        overlay.style.alignItems = 'center';
-        overlay.style.color = 'white';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;';
         overlay.innerHTML = `
             <div style="font-size: 24px; margin-bottom: 20px;">Gerando PDF <span id="overlay-counter">1</span>/3...</div>
             <div id="pdf-container-visible" style="background:white; width:790px; height:auto; padding:0; color:black; overflow:hidden; transform: scale(0.8); transform-origin: top center;"></div>
@@ -123,22 +108,17 @@ async function sendEmails() {
         const counter = document.getElementById('overlay-counter');
         const formData = new FormData();
         
-        // Get email
-        // Using 'recipient' variable already defined and validated
         formData.append('quote_id', id);
-        formData.append('recipient_email', recipient); // Use 'recipient' from the modal input
+        formData.append('recipient_email', recipient);
 
-        // Generate 3 PDFs sequentially
         for (let i = 1; i <= 3; i++) {
             counter.innerText = i;
-            status.innerText = `Gerando PDF ${i}/3...`; // Update modal status as well
+            status.innerText = `Gerando PDF ${i}/3...`;
             
-            // 1. Fetch HTML
             const url = `/print?id=${id}&company_index=${i}`;
             const response = await fetch(url);
             const htmlText = await response.text();
             
-            // 2. Parse & Insert into Visible Container
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlText, 'text/html');
             
@@ -146,13 +126,10 @@ async function sendEmails() {
             doc.querySelectorAll('style').forEach(style => { css += style.innerHTML; });
             const bodyContent = doc.body.innerHTML;
 
-            // Reset container content
             container.innerHTML = `<style>${css}</style><div class="pdf-content" style="padding:20px;">${bodyContent}</div>`;
             
-            // Wait for render (crucial)
             await new Promise(r => setTimeout(r, 800));
 
-            // 3. Generate PDF
             const opt = {
                 margin: 0,
                 filename: `orcamento_${id}_${i}.pdf`,
@@ -164,14 +141,12 @@ async function sendEmails() {
             const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
             formData.append(`pdf${i}`, pdfBlob, `orcamento_${i}.pdf`);
             
-            // Small pause
             await new Promise(r => setTimeout(r, 200));
         }
 
-        document.body.removeChild(overlay); // Remove overlay after generation
+        document.body.removeChild(overlay);
         status.innerText = 'Enviando e-mail...';
 
-        // Send to Backend
         const res = await fetch('/api/send_budget', {
             method: 'POST',
             body: formData
@@ -181,16 +156,13 @@ async function sendEmails() {
         
         if (json.success) {
             status.innerHTML = `<span style="color:green">✅ ${json.message}</span>`;
-            if (json.details) {
-                // console.log(json.details);
-            }
-            setTimeout(() => { closeEmailModal(); }, 2000); // Use existing close function
+            setTimeout(() => { closeEmailModal(); }, 2000);
         } else {
             status.innerHTML = `<span style="color:red">❌ ${json.message}</span>`;
             if (json.details) {
                 status.innerHTML += `<br><small>${json.details.join('<br>')}</small>`;
             }
-            btn.disabled = false; // Re-enable button on error
+            btn.disabled = false;
             btn.innerText = 'Tentar Novamente';
         }
 
@@ -199,7 +171,7 @@ async function sendEmails() {
         status.innerText = 'Erro: ' + err.message;
         const overlay = document.getElementById('pdf-generation-overlay');
         if(overlay) document.body.removeChild(overlay);
-        btn.disabled = false; // Re-enable button on error
+        btn.disabled = false;
         btn.innerText = 'Enviar Orçamentos';
     }
 }
@@ -224,3 +196,4 @@ async function sendEmails() {
         </div>
     </div>
 </div>
+<%- include('layout_footer') %>

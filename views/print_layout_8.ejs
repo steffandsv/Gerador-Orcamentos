@@ -77,7 +77,7 @@
     
     <div class="footer-notes">
         <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
-            <%= company.detalhes_adicionais %>
+            <%- company.detalhes_adicionais %>
         <% } else { %>
             <p>Este orçamento é válido por 30 dias.</p>
         <% } %>

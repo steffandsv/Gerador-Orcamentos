@@ -1,8 +1,8 @@
-<h2><%= empresa ? 'Editar' : 'Nova' %> Empresa</h2>
+<%- include('layout_header') %>
+<h2><%= empresa.id ? 'Editar' : 'Nova' %> Empresa</h2>
 
 <form action="/empresas/save" method="POST" class="card" id="companyForm">
-    <input type="hidden" name="action" value="save_company">
-    <% if (empresa) { %>
+    <% if (empresa.id) { %>
         <input type="hidden" name="id" value="<%= empresa.id %>">
     <% } %>
 
@@ -38,7 +38,7 @@
             <button type="button" onclick="execCmd('removeFormat')" title="Limpar Formatação">🧹</button>
         </div>
         <div id="editor" contenteditable="true" style="padding: 10px; min-height: 150px; background: #fff;">
-            <%= empresa.detalhes_adicionais || '' %>
+            <%- empresa.detalhes_adicionais || '' %>
         </div>
     </div>
     <input type="hidden" name="detalhes_adicionais" id="detalhes_adicionais">
@@ -106,7 +106,8 @@
 
         fetch('/api/test_smtp', {
             method: 'POST',
-            body: new URLSearchParams(data)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         })
         .then(res => res.json())
         .then(res => {
@@ -147,3 +148,4 @@
         background: #e0e0e0;
     }
 </style>
+<%- include('layout_footer') %>

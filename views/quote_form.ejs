@@ -1,6 +1,9 @@
+<%- include('layout_header') %>
 <%
-    // Populate variables from Edit Data if available, otherwise defaults
-    if ((typeof quote_edit !== 'undefined' && quote_edit !== null) && quote_edit) {
+    var q_id, q_titulo, q_sol_nome, q_sol_cnpj, q_emp1, q_emp2, q_emp3;
+    var q_var, q_tpl1, q_tpl2, q_tpl3, items_json, page_title;
+
+    if (typeof quote_edit !== 'undefined' && quote_edit !== null && quote_edit) {
         q_id = quote_edit.id;
         q_titulo = quote_edit.titulo;
         q_sol_nome = quote_edit.solicitante_nome;
@@ -13,9 +16,8 @@
         q_tpl2 = quote_edit.template2_id;
         q_tpl3 = quote_edit.template3_id;
         
-        // Prepare items for JS
         items_json = JSON.stringify(items_edit);
-        page_title = "Editar Orçamento #q_id";
+        page_title = "Editar Orçamento #" + q_id;
     } else {
         q_id = '';
         q_titulo = '';
@@ -35,7 +37,6 @@
 <h2><%= page_title %></h2>
 
 <form action="/orcamentos/save" method="POST" id="quoteForm">
-    <input type="hidden" name="action" value="save_quote">
     <% if (q_id) { %>
         <input type="hidden" name="quote_id" value="<%= q_id %>">
     <% } %>
@@ -159,7 +160,6 @@
         <span class="close-modal" style="color:#aaa; float:right; font-size:28px; font-weight:bold; cursor:pointer;">&times;</span>
         <h2>Selecione um Modelo</h2>
         <div class="template-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:20px; padding:20px 0;">
-            <!-- Templates will be loaded here -->
             <% for(var i=1; i<=12; i++) { %>
             <div class="template-item" data-id="<%= i %>" style="border:1px solid #ddd; padding:10px; cursor:pointer; transition:0.3s;">
                 <h4 style="margin:0 0 10px 0; text-align:center;">Modelo <%= i %></h4>
@@ -172,22 +172,9 @@
     </div>
 </div>
 
-<script src="/js/script.js?v=<%= Date.now() %>"></script>
 <script>
-    // --- Solicitante Logic implemented directly here or can be moved to script.js if needed ---
-
     // --- Smart Import Logic ---
     function toggleItemMode() {
-        // Since we unified them, we just show/hide the import input area? 
-        // Actually client asked for a Switch. 
-        // "Importar" default -> shows CSV input. "Manual" -> shows just table? 
-        // But Import fills table. So table must ALWAYS be visible in "Manual" mode, 
-        // and in "Import" mode we show the CSV entry + the table (as preview of what was imported).
-        // Let's interpret: 
-        // Import Mode: Show CSV Input area.
-        // Manual Mode: Hide CSV Input area. 
-        // Table is always shown to see the items.
-        
         const mode = document.querySelector('input[name="item_mode"]:checked').value;
         const importSection = document.getElementById('importSection');
         
@@ -198,7 +185,6 @@
         }
     }
     
-    // Initialize
     toggleItemMode();
 
     // --- Company Unique Selection Logic ---
@@ -211,12 +197,10 @@
             const currentVal = select.value;
             const options = select.querySelectorAll('option');
             
-            // Re-enable all first
             options.forEach(opt => {
                 if (opt.value) opt.disabled = false;
             });
 
-            // Disable if selected elsewhere
             options.forEach(opt => {
                 if (opt.value && selectedValues.includes(opt.value) && opt.value !== currentVal) {
                     opt.disabled = true;
@@ -224,13 +208,11 @@
             });
         });
 
-        // Auto selection if only 1 option left
         selects.forEach(select => {
             if (!select.value) {
                 const available = Array.from(select.querySelectorAll('option')).filter(opt => !opt.disabled && opt.value);
                 if (available.length === 1) {
                     select.value = available[0].value;
-                    // Trigger change to update others
                     updateCompanyOptions();
                 }
             }
@@ -238,24 +220,16 @@
     }
 
     selects.forEach(s => s.addEventListener('change', updateCompanyOptions));
-    // Run once on load
     updateCompanyOptions();
-
 </script>
-<script src="/js/autocomplete.js?v=<%= Date.now() %>"></script>
 <script>
     // --- Populate Items on Edit ---
-    var initialItems = <%= items_json %>;
+    var initialItems = <%- items_json %>;
     
-    // We need to wait for script.js to load to have access to createRow.
-    // Since script.js is included above, we can just use a DOMContentLoaded listener, 
-    // but deeper down to be safe.
     document.addEventListener('DOMContentLoaded', function() {
         if (initialItems && initialItems.length > 0) {
-            // A small timeout to ensure createRow from script.js (which also waits for DOMContentLoaded) is ready.
             setTimeout(() => {
                 if (typeof window.createRow === 'function') {
-                    // Clear initial empty row if exists
                     const tbody = document.querySelector('#itemsTable tbody');
                     if (tbody) tbody.innerHTML = ''; 
 
@@ -268,7 +242,6 @@
                         );
                     });
                     
-                    // Switch to Manual mode to ensure table is main focus (though it is always visible)
                     const manualRadio = document.getElementById('mode_manual');
                     if (manualRadio) {
                         manualRadio.checked = true;
@@ -281,3 +254,4 @@
         }
     });
 </script>
+<%- include('layout_footer') %>

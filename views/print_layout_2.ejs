@@ -95,7 +95,7 @@
         </thead>
         <tbody>
             <% 
-            grandTotal = 0;
+            var grandTotal = 0;
             items.forEach(function(item) { 
                 grandTotal += item.total_price;
             %>
@@ -108,7 +108,7 @@
             </tr>
             <% }); %>
             <tr class="total-row">
-                <td colspan="3" style="text-align:right;">VALOR TOTAL</td>
+                <td colspan="4" style="text-align:right;">VALOR TOTAL</td>
                 <td style="text-align:right;"><%= Number(grandTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
             </tr>
         </tbody>
@@ -116,7 +116,7 @@
 
     <% if (!(!company.detalhes_adicionais || company.detalhes_adicionais.length === 0)) { %>
         <div class="rich-text">
-            <%= company.detalhes_adicionais %>
+            <%- company.detalhes_adicionais %>
         </div>
     <% } %>
 
