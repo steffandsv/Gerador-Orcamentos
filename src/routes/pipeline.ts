@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { orcamentos, labels, orcamento_labels, comments, usuarios, itens_orcamento } from '../db/schema';
-import { eq, asc, isNull, sql, and, inArray } from 'drizzle-orm';
+import { eq, asc, desc, isNull, sql, and, inArray } from 'drizzle-orm';
 import { logAudit } from '../lib/audit';
 
 export const pipelineRouter = Router();
@@ -61,7 +61,10 @@ pipelineRouter.get('/api/pipeline/cards', async (req: Request, res: Response) =>
             solicitante_nome: orcamentos.solicitante_nome,
         })
         .from(orcamentos)
-        .where(isNull(orcamentos.deleted_at))
+        .where(and(
+            isNull(orcamentos.deleted_at),
+            sql`stage != 'enviados'`,
+        ))
         .orderBy(asc(orcamentos.position));
 
         // Get all labels for these cards
@@ -463,5 +466,153 @@ pipelineRouter.post('/api/pipeline/reorder', async (req: Request, res: Response)
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: 'Failed to reorder' });
+    }
+});
+
+// ── GET /api/pipeline/enviados/stats — Summary counts for glance card ──
+pipelineRouter.get('/api/pipeline/enviados/stats', async (_req: Request, res: Response) => {
+    try {
+        const [total] = await db.select({ count: sql<number>`COUNT(*)` })
+            .from(orcamentos)
+            .where(and(eq(orcamentos.stage, 'enviados'), isNull(orcamentos.deleted_at)));
+
+        const [won] = await db.select({ count: sql<number>`COUNT(*)` })
+            .from(orcamentos)
+            .where(and(eq(orcamentos.stage, 'enviados'), eq(orcamentos.outcome, 'won'), isNull(orcamentos.deleted_at)));
+
+        const [lost] = await db.select({ count: sql<number>`COUNT(*)` })
+            .from(orcamentos)
+            .where(and(eq(orcamentos.stage, 'enviados'), eq(orcamentos.outcome, 'lost'), isNull(orcamentos.deleted_at)));
+
+        const [pending] = await db.select({ count: sql<number>`COUNT(*)` })
+            .from(orcamentos)
+            .where(and(
+                eq(orcamentos.stage, 'enviados'),
+                isNull(orcamentos.deleted_at),
+                sql`(outcome IS NULL OR outcome = '' OR outcome = 'pending')`,
+            ));
+
+        res.json({
+            total: Number(total.count),
+            won: Number(won.count),
+            lost: Number(lost.count),
+            pending: Number(pending.count),
+        });
+    } catch (e) {
+        console.error('Enviados stats error:', e);
+        res.status(500).json({ error: 'Failed to load stats' });
+    }
+});
+
+// ── GET /api/pipeline/enviados — Paginated enviados list ──
+pipelineRouter.get('/api/pipeline/enviados', async (req: Request, res: Response) => {
+    try {
+        const page = Math.max(1, Number(req.query.page) || 1);
+        const limit = 20;
+        const offset = (page - 1) * limit;
+        const search = (req.query.search as string || '').trim();
+        const outcome = req.query.outcome as string || '';
+        const assignee = req.query.assignee as string || '';
+        const sortBy = req.query.sortBy as string || 'updated_at';
+        const sortDir = req.query.sortDir as string || 'desc';
+
+        // Build conditions
+        const conditions = [
+            eq(orcamentos.stage, 'enviados'),
+            isNull(orcamentos.deleted_at),
+        ];
+
+        if (search) {
+            conditions.push(sql`(titulo LIKE ${'%' + search + '%'} OR solicitante_nome LIKE ${'%' + search + '%'})`);
+        }
+
+        if (outcome === 'won' || outcome === 'lost') {
+            conditions.push(eq(orcamentos.outcome, outcome));
+        } else if (outcome === 'pending') {
+            conditions.push(sql`(outcome IS NULL OR outcome = '' OR outcome = 'pending')`);
+        }
+
+        if (assignee) {
+            conditions.push(eq(orcamentos.assigned_to, Number(assignee)));
+        }
+
+        const whereClause = and(...conditions);
+
+        // Count total
+        const [countResult] = await db.select({ count: sql<number>`COUNT(*)` })
+            .from(orcamentos).where(whereClause);
+        const totalCount = Number(countResult.count);
+        const totalPages = Math.ceil(totalCount / limit);
+
+        // Sort
+        const validSorts: Record<string, any> = {
+            titulo: orcamentos.titulo,
+            updated_at: orcamentos.updated_at,
+            deadline: orcamentos.deadline,
+            created_at: orcamentos.created_at,
+        };
+        const sortColumn = validSorts[sortBy] || orcamentos.updated_at;
+        const orderFn = sortDir === 'asc' ? asc : desc;
+
+        // Fetch rows
+        const rows = await db.select({
+            id: orcamentos.id,
+            titulo: orcamentos.titulo,
+            solicitante_nome: orcamentos.solicitante_nome,
+            deadline: orcamentos.deadline,
+            assigned_to: orcamentos.assigned_to,
+            outcome: orcamentos.outcome,
+            updated_at: orcamentos.updated_at,
+            created_at: orcamentos.created_at,
+        })
+        .from(orcamentos)
+        .where(whereClause)
+        .orderBy(orderFn(sortColumn))
+        .limit(limit)
+        .offset(offset);
+
+        // Get assignee names
+        const allUsers = await db.select({
+            id: usuarios.id,
+            username: usuarios.username,
+            nome_completo: usuarios.nome_completo,
+        }).from(usuarios).where(isNull(usuarios.deleted_at));
+        const usersMap = Object.fromEntries(allUsers.map(u => [u.id, u]));
+
+        // Get labels for these rows
+        const rowIds = rows.map(r => r.id);
+        let rowLabels: any[] = [];
+        if (rowIds.length > 0) {
+            rowLabels = await db.select({
+                orcamento_id: orcamento_labels.orcamento_id,
+                label_name: labels.name,
+                label_color: labels.color,
+            })
+            .from(orcamento_labels)
+            .innerJoin(labels, eq(orcamento_labels.label_id, labels.id))
+            .where(inArray(orcamento_labels.orcamento_id, rowIds));
+        }
+
+        const labelsMap: Record<number, any[]> = {};
+        for (const rl of rowLabels) {
+            if (!labelsMap[rl.orcamento_id]) labelsMap[rl.orcamento_id] = [];
+            labelsMap[rl.orcamento_id].push({ name: rl.label_name, color: rl.label_color });
+        }
+
+        const enrichedRows = rows.map(r => ({
+            ...r,
+            assignee: r.assigned_to ? usersMap[r.assigned_to] || null : null,
+            labels: labelsMap[r.id] || [],
+        }));
+
+        res.json({
+            rows: enrichedRows,
+            page,
+            totalPages,
+            totalCount,
+        });
+    } catch (e) {
+        console.error('Enviados list error:', e);
+        res.status(500).json({ error: 'Failed to load enviados' });
     }
 });

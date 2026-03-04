@@ -1,27 +1,34 @@
 // ══════════════════════════════════════════════════════════════
-// Pipeline Board — Client-Side Engine
+// Pipeline Board — Client-Side Engine (Hybrid View)
+// 4 Active Columns + Enviados Summary & Table
 // Drag & Drop · SSE Real-time · Card Modal · Labels · Comments
 // ══════════════════════════════════════════════════════════════
 
 (function () {
     'use strict';
 
-    const STAGES = ['inbox', 'separada', 'cotacao', 'revisao', 'enviados'];
+    const ACTIVE_STAGES = ['inbox', 'separada', 'cotacao', 'revisao'];
+    const ALL_STAGES = ['inbox', 'separada', 'cotacao', 'revisao', 'enviados'];
     const USERS = window.__PIPELINE_USERS__ || [];
     const CURRENT_USER = window.__CURRENT_USER__ || {};
 
-    let allCards = [];
+    let allCards = [];     // Active stage cards only
     let allLabels = [];
     let activeCardId = null;
     let draggedCardId = null;
+
+    // Enviados table state
+    let enviadosState = { page: 1, sortBy: 'updated_at', sortDir: 'desc', search: '', outcome: '', assignee: '' };
 
     // ── Init ──
     document.addEventListener('DOMContentLoaded', () => {
         loadCards();
         loadLabels();
+        loadEnviadosStats();
+        loadEnviados();
         connectSSE();
         setupFilters();
-        setupLabelAddSelect();
+        setupEnviadosFilters();
         setupMentionAutocomplete();
     });
 
@@ -51,8 +58,42 @@
         }
     }
 
+    async function loadEnviadosStats() {
+        try {
+            const res = await fetch('/api/pipeline/enviados/stats');
+            const data = await res.json();
+            document.getElementById('glanceTotalNum').textContent = data.total;
+            document.getElementById('glancePendingNum').textContent = data.pending;
+            document.getElementById('glanceWonNum').textContent = data.won;
+            document.getElementById('glanceLostNum').textContent = data.lost;
+            document.getElementById('count-enviados').textContent = data.total;
+        } catch (e) {
+            console.error('Failed to load enviados stats:', e);
+        }
+    }
+
+    async function loadEnviados() {
+        const s = enviadosState;
+        const params = new URLSearchParams({
+            page: String(s.page),
+            sortBy: s.sortBy,
+            sortDir: s.sortDir,
+        });
+        if (s.search) params.set('search', s.search);
+        if (s.outcome) params.set('outcome', s.outcome);
+        if (s.assignee) params.set('assignee', s.assignee);
+
+        try {
+            const res = await fetch(`/api/pipeline/enviados?${params}`);
+            const data = await res.json();
+            renderEnviadosTable(data.rows, data.page, data.totalPages, data.totalCount);
+        } catch (e) {
+            console.error('Failed to load enviados:', e);
+        }
+    }
+
     // ══════════════════════════════════════════════════════════
-    // RENDERING
+    // BOARD RENDERING (4 active columns only)
     // ══════════════════════════════════════════════════════════
 
     function renderBoard() {
@@ -60,7 +101,7 @@
         const filterAssignee = document.getElementById('filterAssignee')?.value || '';
         const filterLabel = document.getElementById('filterLabel')?.value || '';
 
-        STAGES.forEach(stage => {
+        ACTIVE_STAGES.forEach(stage => {
             const body = document.querySelector(`.column-body[data-stage="${stage}"]`);
             if (!body) return;
 
@@ -76,7 +117,6 @@
 
             body.innerHTML = stageCards.map(c => renderCard(c)).join('');
 
-            // Update count
             const countEl = document.getElementById(`count-${stage}`);
             if (countEl) countEl.textContent = stageCards.length;
         });
@@ -124,6 +164,141 @@
     }
 
     // ══════════════════════════════════════════════════════════
+    // ENVIADOS TABLE RENDERING
+    // ══════════════════════════════════════════════════════════
+
+    function renderEnviadosTable(rows, page, totalPages, totalCount) {
+        const tbody = document.getElementById('enviadosBody');
+
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Nenhuma cotação enviada encontrada.</td></tr>';
+            document.getElementById('enviadosPagination').innerHTML = '';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(r => {
+            const assigneeName = r.assignee
+                ? (r.assignee.nome_completo || r.assignee.username)
+                : '—';
+
+            const labelsHtml = r.labels.map(l =>
+                `<span class="label-pill" style="background:${l.color}20; color:${l.color}; border-color:${l.color}40">${l.name}</span>`
+            ).join(' ');
+
+            const deadlineStr = r.deadline
+                ? new Date(r.deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                : '—';
+
+            const updatedStr = r.updated_at
+                ? new Date(r.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                : '—';
+
+            let outcomeBadge = '<span class="outcome-badge outcome-badge-pending">⏳ Aguardando</span>';
+            if (r.outcome === 'won') outcomeBadge = '<span class="outcome-badge outcome-badge-won">🏆 Vencemos</span>';
+            if (r.outcome === 'lost') outcomeBadge = '<span class="outcome-badge outcome-badge-lost">❌ Perdemos</span>';
+
+            return `
+            <tr class="enviados-row" onclick="openCardModal(${r.id})" data-id="${r.id}">
+                <td class="col-titulo">${escapeHtml(r.titulo)}</td>
+                <td class="col-solicitante">${escapeHtml(r.solicitante_nome || '—')}</td>
+                <td class="col-assignee">${escapeHtml(assigneeName)}</td>
+                <td class="col-labels">${labelsHtml || '—'}</td>
+                <td class="col-deadline">${deadlineStr}</td>
+                <td class="col-updated">${updatedStr}</td>
+                <td class="col-outcome">${outcomeBadge}</td>
+                <td class="col-actions">
+                    <a href="/orcamentos/form?id=${r.id}" class="table-action-btn" title="Editar" onclick="event.stopPropagation();">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                </td>
+            </tr>`;
+        }).join('');
+
+        // Pagination
+        renderPagination(page, totalPages, totalCount);
+    }
+
+    function renderPagination(page, totalPages, totalCount) {
+        const container = document.getElementById('enviadosPagination');
+        if (totalPages <= 1) {
+            container.innerHTML = `<span class="pagination-info">${totalCount} registro${totalCount !== 1 ? 's' : ''}</span>`;
+            return;
+        }
+
+        let html = `<span class="pagination-info">${totalCount} registros · Página ${page} de ${totalPages}</span>`;
+        html += '<div class="pagination-buttons">';
+
+        if (page > 1) {
+            html += `<button class="pagination-btn" onclick="goToEnviadosPage(${page - 1})"><i class="fas fa-chevron-left"></i></button>`;
+        }
+
+        // Show page numbers
+        const start = Math.max(1, page - 2);
+        const end = Math.min(totalPages, page + 2);
+        for (let i = start; i <= end; i++) {
+            html += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="goToEnviadosPage(${i})">${i}</button>`;
+        }
+
+        if (page < totalPages) {
+            html += `<button class="pagination-btn" onclick="goToEnviadosPage(${page + 1})"><i class="fas fa-chevron-right"></i></button>`;
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    window.goToEnviadosPage = function (page) {
+        enviadosState.page = page;
+        loadEnviados();
+    };
+
+    window.sortEnviados = function (field) {
+        if (enviadosState.sortBy === field) {
+            enviadosState.sortDir = enviadosState.sortDir === 'desc' ? 'asc' : 'desc';
+        } else {
+            enviadosState.sortBy = field;
+            enviadosState.sortDir = 'desc';
+        }
+        enviadosState.page = 1;
+
+        // Update sort icons
+        document.querySelectorAll('.enviados-table th').forEach(th => {
+            th.classList.remove('active-sort');
+            const icon = th.querySelector('.sort-icon');
+            if (icon) icon.className = 'fas fa-sort sort-icon';
+        });
+
+        const activeTh = document.querySelector(`th[data-sort="${field}"]`);
+        if (activeTh) {
+            activeTh.classList.add('active-sort');
+            const icon = activeTh.querySelector('.sort-icon');
+            if (icon) icon.className = `fas fa-sort-${enviadosState.sortDir === 'desc' ? 'down' : 'up'} sort-icon`;
+        }
+
+        loadEnviados();
+    };
+
+    function setupEnviadosFilters() {
+        document.getElementById('enviadosSearch')?.addEventListener('input', debounce(() => {
+            enviadosState.search = document.getElementById('enviadosSearch').value;
+            enviadosState.page = 1;
+            loadEnviados();
+        }, 300));
+
+        document.getElementById('enviadosOutcome')?.addEventListener('change', () => {
+            enviadosState.outcome = document.getElementById('enviadosOutcome').value;
+            enviadosState.page = 1;
+            loadEnviados();
+        });
+
+        document.getElementById('enviadosAssignee')?.addEventListener('change', () => {
+            enviadosState.assignee = document.getElementById('enviadosAssignee').value;
+            enviadosState.page = 1;
+            loadEnviados();
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════
     // DRAG & DROP
     // ══════════════════════════════════════════════════════════
 
@@ -153,44 +328,57 @@
     window.handleDrop = async function (e, targetStage) {
         e.preventDefault();
         e.currentTarget.classList.remove('drag-over');
-        const cardId = parseInt(e.dataTransfer.getData('text/plain'));
+        const cardId = Number.parseInt(e.dataTransfer.getData('text/plain'));
         if (!cardId) return;
 
         const card = allCards.find(c => c.id === cardId);
         if (!card || card.stage === targetStage) return;
 
-        // Optimistic update
         const oldStage = card.stage;
-        card.stage = targetStage;
 
-        // Calculate new position (at end of target stage)
-        const targetCards = allCards.filter(c => c.stage === targetStage && c.id !== cardId);
-        card.position = targetCards.length;
-
-        renderBoard();
+        if (targetStage === 'enviados') {
+            // Moving to Enviados — remove from active cards, update server
+            allCards = allCards.filter(c => c.id !== cardId);
+            renderBoard();
+        } else {
+            // Moving between active stages
+            card.stage = targetStage;
+            const targetCards = allCards.filter(c => c.stage === targetStage && c.id !== cardId);
+            card.position = targetCards.length;
+            renderBoard();
+        }
 
         try {
             await fetch(`/api/pipeline/cards/${cardId}/move`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ stage: targetStage, position: card.position }),
+                body: JSON.stringify({ stage: targetStage, position: 0 }),
             });
 
-            // Reorder all cards in new stage
-            const orderedIds = allCards
-                .filter(c => c.stage === targetStage)
-                .sort((a, b) => a.position - b.position)
-                .map(c => c.id);
+            if (targetStage === 'enviados') {
+                loadEnviadosStats();
+                loadEnviados();
+            } else if (oldStage === 'enviados') {
+                loadEnviadosStats();
+                loadEnviados();
+            }
 
-            await fetch('/api/pipeline/reorder', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cardIds: orderedIds, stage: targetStage }),
-            });
+            // Reorder within target stage
+            if (targetStage !== 'enviados') {
+                const orderedIds = allCards
+                    .filter(c => c.stage === targetStage)
+                    .sort((a, b) => a.position - b.position)
+                    .map(c => c.id);
+
+                await fetch('/api/pipeline/reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cardIds: orderedIds, stage: targetStage }),
+                });
+            }
         } catch (err) {
-            // Rollback
             card.stage = oldStage;
-            renderBoard();
+            loadCards();
             console.error('Move failed:', err);
         }
     };
@@ -205,17 +393,15 @@
         es.addEventListener('card_moved', (e) => {
             const data = JSON.parse(e.data);
             if (data.movedBy === CURRENT_USER.username) return;
-            const card = allCards.find(c => c.id === data.cardId);
-            if (card) {
-                card.stage = data.stage;
-                card.position = data.position;
-                renderBoard();
-            }
+            loadCards();
+            loadEnviadosStats();
+            loadEnviados();
         });
 
-        es.addEventListener('card_updated', (e) => {
-            const data = JSON.parse(e.data);
-            loadCards(); // Full reload for simplicity on updates
+        es.addEventListener('card_updated', () => {
+            loadCards();
+            loadEnviadosStats();
+            loadEnviados();
         });
 
         es.addEventListener('card_assigned', (e) => {
@@ -228,13 +414,14 @@
                     : null;
                 renderBoard();
             }
+            loadEnviados();
         });
 
-        es.addEventListener('card_label_added', () => loadCards());
-        es.addEventListener('card_label_removed', () => loadCards());
+        es.addEventListener('card_label_added', () => { loadCards(); loadEnviados(); });
+        es.addEventListener('card_label_removed', () => { loadCards(); loadEnviados(); });
         es.addEventListener('label_created', () => loadLabels());
         es.addEventListener('label_updated', () => loadLabels());
-        es.addEventListener('label_deleted', () => { loadLabels(); loadCards(); });
+        es.addEventListener('label_deleted', () => { loadLabels(); loadCards(); loadEnviados(); });
         es.addEventListener('comment_added', () => {
             if (activeCardId) loadComments(activeCardId);
         });
@@ -251,7 +438,20 @@
 
     window.openCardModal = async function (cardId) {
         activeCardId = cardId;
-        const card = allCards.find(c => c.id === cardId);
+
+        // Try active cards first, then fetch from server if it's an enviados card
+        let card = allCards.find(c => c.id === cardId);
+        if (!card) {
+            // Fetch card details from API for enviados cards
+            try {
+                const res = await fetch('/api/pipeline/cards');
+                const data = await res.json();
+                card = (data.cards || []).find(c => c.id === cardId);
+            } catch (e) {
+                console.error('Failed to fetch card:', e);
+                return;
+            }
+        }
         if (!card) return;
 
         document.getElementById('cardModal').style.display = 'flex';
@@ -263,7 +463,7 @@
             ? new Date(card.deadline).toISOString().slice(0, 16)
             : '';
 
-        // Outcome section
+        // Outcome section — always visible for enviados
         const outcomeSection = document.getElementById('outcomeSection');
         if (card.stage === 'enviados') {
             outcomeSection.style.display = 'block';
@@ -274,13 +474,8 @@
             outcomeSection.style.display = 'none';
         }
 
-        // Edit/Print links
         document.getElementById('btnEditQuote').href = `/orcamentos/form?id=${cardId}`;
-
-        // Labels in sidebar
         renderModalLabels(card);
-
-        // Load comments
         loadComments(cardId);
     };
 
@@ -289,7 +484,6 @@
         activeCardId = null;
     };
 
-    // Click outside to close
     document.addEventListener('click', (e) => {
         if (e.target.id === 'cardModal') closeCardModal();
         if (e.target.id === 'labelManagerModal') closeLabelManager();
@@ -309,7 +503,6 @@
         if (card) card.description = desc;
     };
 
-    // ── Assign User ──
     window.assignUser = async function () {
         if (!activeCardId) return;
         const userId = document.getElementById('modalAssignee').value;
@@ -324,9 +517,9 @@
             card.assignee = userId ? USERS.find(u => u.id === Number(userId)) || null : null;
             renderBoard();
         }
+        loadEnviados();
     };
 
-    // ── Save Deadline ──
     window.saveDeadline = async function () {
         if (!activeCardId) return;
         const val = document.getElementById('modalDeadline').value;
@@ -342,7 +535,6 @@
         }
     };
 
-    // ── Set Outcome ──
     window.setOutcome = async function (outcome) {
         if (!activeCardId) return;
         await fetch(`/api/pipeline/cards/${activeCardId}`, {
@@ -354,13 +546,12 @@
             btn.classList.toggle('active', btn.dataset.outcome === outcome);
         });
         const card = allCards.find(c => c.id === activeCardId);
-        if (card) {
-            card.outcome = outcome || null;
-            renderBoard();
-        }
+        if (card) card.outcome = outcome || null;
+        renderBoard();
+        loadEnviadosStats();
+        loadEnviados();
     };
 
-    // ── Generate PDFs (from modal) ──
     window.generateQuotesFromModal = function () {
         if (!activeCardId) return;
         window.open(`/print?id=${activeCardId}&company_index=1`, '_blank');
@@ -381,11 +572,10 @@
             </span>`
         ).join('');
 
-        // Update add select (exclude already-assigned)
         const select = document.getElementById('labelAddSelect');
-        const assignedIds = card.labels.map(l => l.id);
+        const assignedIds = new Set(card.labels.map(l => l.id));
         select.innerHTML = '<option value="">+ Adicionar...</option>';
-        allLabels.filter(l => !assignedIds.includes(l.id)).forEach(l => {
+        allLabels.filter(l => !assignedIds.has(l.id)).forEach(l => {
             select.innerHTML += `<option value="${l.id}" data-color="${l.color}">${l.name}</option>`;
         });
         select.onchange = () => {
@@ -421,7 +611,6 @@
         }
     };
 
-    // ── Label Manager ──
     window.openLabelManager = function () {
         document.getElementById('labelManagerModal').style.display = 'flex';
         renderLabelManagerList();
@@ -556,8 +745,6 @@
 
         input.value = '';
         loadComments(activeCardId);
-
-        // Update comment count locally
         const card = allCards.find(c => c.id === activeCardId);
         if (card) card.comment_count++;
         renderBoard();
@@ -570,7 +757,6 @@
         }
     };
 
-    // ── @Mention Autocomplete ──
     function setupMentionAutocomplete() {
         const input = document.getElementById('commentInput');
         const dropdown = document.getElementById('mentionDropdown');
@@ -655,10 +841,7 @@
             return;
         }
 
-        // Save items via the existing quote form save endpoint
-        // We need to fetch current quote data first, then resave with merged items
         status.textContent = `✅ ${items.length} itens prontos. Abra "Editar Orçamento" para adicionar.`;
-        // Store in description as a note
         const existingDesc = document.getElementById('modalDescription').value || '';
         const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.descricao} | Qtd: ${it.quantidade} | R$ ${it.valor_compra}`).join('\n')}`;
         document.getElementById('modalDescription').value = existingDesc + csvNote;
@@ -674,10 +857,6 @@
         document.getElementById('filterSearch')?.addEventListener('input', debounce(renderBoard, 200));
         document.getElementById('filterAssignee')?.addEventListener('change', renderBoard);
         document.getElementById('filterLabel')?.addEventListener('change', renderBoard);
-    }
-
-    function setupLabelAddSelect() {
-        // Handled dynamically in renderModalLabels
     }
 
     // ══════════════════════════════════════════════════════════

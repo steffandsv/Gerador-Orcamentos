@@ -1,5 +1,5 @@
 <%- include('layout_header') %>
-<% /* Pipeline Board uses its own script */ %>
+<% /* Pipeline Board — Hybrid View */ %>
 <link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
 
 <div class="pipeline-toolbar">
@@ -34,8 +34,13 @@
     </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PIPELINE BOARD — 4 Active Columns + Summary                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
 <div class="pipeline-board" id="pipelineBoard">
-    <% stageKeys.forEach(function(key) { var meta = stages[key]; %>
+    <% var activeStages = ['inbox','separada','cotacao','revisao']; %>
+    <% var activeMeta = { inbox: {label:'Inbox',icon:'📩'}, separada: {label:'Separada',icon:'🔒'}, cotacao: {label:'Em Cotação',icon:'⚡'}, revisao: {label:'Revisão',icon:'🔍'} }; %>
+    <% activeStages.forEach(function(key) { var meta = activeMeta[key]; %>
     <div class="pipeline-column" data-stage="<%= key %>" id="stage-<%= key %>">
         <div class="column-header">
             <span class="column-icon"><%= meta.icon %></span>
@@ -46,10 +51,99 @@
              ondragover="handleDragOver(event)"
              ondragleave="handleDragLeave(event)"
              ondrop="handleDrop(event, '<%= key %>')">
-            <!-- Cards inserted by JS -->
         </div>
     </div>
     <% }); %>
+
+    <!-- Enviados Summary Card (5th position) -->
+    <div class="pipeline-column enviados-summary-column" id="stage-enviados">
+        <div class="column-header">
+            <span class="column-icon">✅</span>
+            <span class="column-title">Enviados</span>
+            <span class="column-count" id="count-enviados">0</span>
+        </div>
+        <div class="column-body enviados-summary-body"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event, 'enviados')">
+            <div class="enviados-glance" id="enviadosGlance">
+                <div class="glance-stat glance-total">
+                    <span class="glance-number" id="glanceTotalNum">—</span>
+                    <span class="glance-label">Total</span>
+                </div>
+                <div class="glance-divider"></div>
+                <div class="glance-stat glance-pending">
+                    <span class="glance-number" id="glancePendingNum">—</span>
+                    <span class="glance-label">⏳ Aguardando</span>
+                </div>
+                <div class="glance-stat glance-won">
+                    <span class="glance-number" id="glanceWonNum">—</span>
+                    <span class="glance-label">🏆 Vencemos</span>
+                </div>
+                <div class="glance-stat glance-lost">
+                    <span class="glance-number" id="glanceLostNum">—</span>
+                    <span class="glance-label">❌ Perdemos</span>
+                </div>
+            </div>
+            <div class="glance-hint">
+                <i class="fas fa-arrow-down"></i> Detalhes abaixo · Arraste cards aqui
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ENVIADOS TABLE — Rich, filterable, paginated               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="enviados-section" id="enviadosSection">
+    <div class="enviados-header">
+        <h3 class="enviados-title">✅ Enviados</h3>
+        <div class="enviados-filters">
+            <input type="text" id="enviadosSearch" class="filter-input" placeholder="Buscar título ou solicitante...">
+            <select id="enviadosOutcome" class="filter-select">
+                <option value="">Todos os resultados</option>
+                <option value="pending">⏳ Aguardando</option>
+                <option value="won">🏆 Vencemos</option>
+                <option value="lost">❌ Perdemos</option>
+            </select>
+            <select id="enviadosAssignee" class="filter-select">
+                <option value="">Todos os responsáveis</option>
+                <% users.forEach(function(u) { %>
+                    <option value="<%= u.id %>"><%= u.nome_completo || u.username %></option>
+                <% }); %>
+            </select>
+        </div>
+    </div>
+
+    <div class="enviados-table-wrap">
+        <table class="enviados-table" id="enviadosTable">
+            <thead>
+                <tr>
+                    <th class="sortable" data-sort="titulo" onclick="sortEnviados('titulo')">
+                        Título <i class="fas fa-sort sort-icon"></i>
+                    </th>
+                    <th>Solicitante</th>
+                    <th>Responsável</th>
+                    <th>Etiquetas</th>
+                    <th class="sortable" data-sort="deadline" onclick="sortEnviados('deadline')">
+                        Data Limite <i class="fas fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable active-sort" data-sort="updated_at" onclick="sortEnviados('updated_at')">
+                        Atualizado <i class="fas fa-sort-down sort-icon"></i>
+                    </th>
+                    <th>Resultado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="enviadosBody">
+                <tr class="loading-row"><td colspan="8"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="enviados-pagination" id="enviadosPagination">
+        <!-- Pagination rendered by JS -->
+    </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -93,9 +187,7 @@
                     <div class="section-header">
                         <i class="fas fa-comments"></i> <span>Comentários</span>
                     </div>
-                    <div id="commentsList" class="comments-list">
-                        <!-- Comments loaded by JS -->
-                    </div>
+                    <div id="commentsList" class="comments-list"></div>
                     <div class="comment-composer">
                         <textarea id="commentInput" class="comment-input"
                             placeholder="Escreva um comentário... Use @nome para mencionar alguém"
@@ -137,7 +229,7 @@
                     <input type="datetime-local" id="modalDeadline" class="sidebar-input" onchange="saveDeadline()">
                 </div>
 
-                <!-- Outcome (only visible for 'enviados' stage) -->
+                <!-- Outcome (visible for 'enviados' stage) -->
                 <div class="sidebar-section" id="outcomeSection" style="display:none;">
                     <label class="sidebar-label"><i class="fas fa-trophy"></i> Resultado</label>
                     <div class="outcome-buttons">
@@ -183,15 +275,12 @@
                 <input type="color" id="newLabelColor" class="label-color-input" value="#3b82f6">
                 <button class="btn-pipeline btn-sm" onclick="createLabel()"><i class="fas fa-plus"></i> Criar</button>
             </div>
-            <div id="labelManagerList" class="label-manager-list">
-                <!-- Labels loaded by JS -->
-            </div>
+            <div id="labelManagerList" class="label-manager-list"></div>
         </div>
     </div>
 </div>
 
 <script>
-    // Server-injected data
     window.__PIPELINE_USERS__ = <%- JSON.stringify(users) %>;
     window.__CURRENT_USER__ = <%- JSON.stringify(typeof currentUser !== 'undefined' ? currentUser : {}) %>;
 </script>
