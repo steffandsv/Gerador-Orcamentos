@@ -9,7 +9,7 @@ export const empresasRouter = Router();
 empresasRouter.get('/', async (req, res) => {
     try {
         const allEmpresas = await db.select().from(empresas);
-        res.render('company_list.php', { empresas: allEmpresas }); // We will convert these to .ejs later
+        res.render('company_list', { empresas: allEmpresas }); // Converted to EJS
     } catch (e) {
         res.status(500).send("Database error");
     }
@@ -26,7 +26,7 @@ empresasRouter.get('/form', async (req, res) => {
             if (found.length > 0) empresa = found[0];
         }
 
-        res.render('company_form.php', { empresa }); // To be converted to .ejs
+        res.render('company_form', { empresa }); // Converted to EJS
     } catch (e) {
         res.status(500).send("Database error");
     }

@@ -44,11 +44,11 @@ app.get('/', async (req, res) => {
     if (page === 'orcamento_form') {
         const id = req.query.id || '';
         // We need an endpoint for orcamentos/form to render. I will add it back to the fallback or the router.
-        res.render('quote_form.php', { id }); // Will be converted later
+        res.render('quote_form', { id }); // Converted to EJS
         return;
     }
     
-    res.render('index.php', { page });
+    res.render('index', { page });
 });
 
 // Start Server

@@ -24,7 +24,7 @@ orcamentosRouter.get('/', async (req, res) => {
         .leftJoin(empresas, eq(orcamentos.empresa1_id, empresas.id))
         .orderBy(desc(orcamentos.data_criacao));
         
-        res.render('quote_list.php', { orcamentos: results }); // to be converted to .ejs
+        res.render('quote_list', { orcamentos: results }); // Converted to EJS
     } catch (e) {
         console.error(e);
         res.status(500).send("Database error listing quotes");
