@@ -2063,7 +2063,112 @@ tbody tr:hover {
 }
 
 /* ========================================================================
-   MARKDOWN EDITOR — Tabs, Preview, Save Status
+   DESCRIPTION — Preview-first, Pencil Edit, Done Button
+   ======================================================================== */
+
+.desc-edit-btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.desc-edit-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.desc-done-btn {
+    margin-top: 8px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: none;
+    background: var(--accent);
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.desc-done-btn:hover {
+    opacity: 0.85;
+}
+
+/* ── Enviados Drop Zone ── */
+.enviados-drop-zone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+}
+
+.enviados-drop-message {
+    text-align: center;
+    padding: 16px;
+}
+
+.enviados-drop-message p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+/* ── Markdown Content — Table Support ── */
+.md-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.82rem;
+}
+
+.md-content th,
+.md-content td {
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.md-content th {
+    background: #f1f5f9;
+    font-weight: 600;
+    color: #334155;
+}
+
+.md-content tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+.md-content img {
+    max-width: 100%;
+    border-radius: 6px;
+}
+
+.md-content blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 4px 12px;
+    margin: 8px 0;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 0 6px 6px 0;
+}
+
+.md-content input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+/* ========================================================================
+   MARKDOWN EDITOR — Save Status
    ========================================================================
  */
 

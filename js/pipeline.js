@@ -372,8 +372,8 @@
         document.getElementById('modalTitle').textContent = card.titulo;
         document.getElementById('modalDescription').value = card.description || '';
         document.getElementById('descSaveStatus').textContent = '';
-        // Reset to write tab
-        setDescTab('write');
+        // Default to preview mode
+        setDescTab('preview');
         document.getElementById('modalAssignee').value = card.assigned_to || '';
         document.getElementById('modalDeadline').value = card.deadline ? new Date(card.deadline).toISOString().slice(0, 16) : '';
 
@@ -446,63 +446,33 @@
         }
     }
 
-    window.setDescTab = function (tab) {
+    window.setDescTab = function (mode) {
         const writePane = document.getElementById('descWritePane');
         const previewPane = document.getElementById('descPreviewPane');
-        const tabWrite = document.getElementById('tabWrite');
-        const tabPreview = document.getElementById('tabPreview');
-        if (tab === 'write') {
+        const editBtn = document.getElementById('btnEditDesc');
+
+        if (mode === 'write') {
             writePane.style.display = 'block';
             previewPane.style.display = 'none';
-            tabWrite.classList.add('active');
-            tabPreview.classList.remove('active');
+            editBtn.style.display = 'none';
+            document.getElementById('modalDescription').focus();
         } else {
             const md = document.getElementById('modalDescription').value;
             document.getElementById('descPreviewContent').innerHTML = renderMarkdown(md);
             writePane.style.display = 'none';
             previewPane.style.display = 'block';
-            tabWrite.classList.remove('active');
-            tabPreview.classList.add('active');
+            editBtn.style.display = 'inline-flex';
         }
     };
 
     function renderMarkdown(text) {
-        if (!text) return '<p style="color:#94a3b8;font-style:italic;">Sem descrição.</p>';
-        let html = escapeHtml(text);
-        // Headings
-        html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
-        html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
-        html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
-        // Bold + Italic
-        html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-        // Code blocks
-        html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-        // Horizontal rule
-        html = html.replace(/^---$/gm, '<hr>');
-        // Unordered list
-        html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
-        html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
-        // Ordered list
-        html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-        // Links
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-        // Line breaks → paragraphs
-        html = html.replace(/\n\n/g, '</p><p>');
-        html = html.replace(/\n/g, '<br>');
-        html = '<p>' + html + '</p>';
-        // Clean empty paragraphs
-        html = html.replace(/<p><\/p>/g, '');
-        html = html.replace(/<p>(<h[2-4]>)/g, '$1');
-        html = html.replace(/(<\/h[2-4]>)<\/p>/g, '$1');
-        html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
-        html = html.replace(/<p>(<ul>)/g, '$1');
-        html = html.replace(/(<\/ul>)<\/p>/g, '$1');
-        html = html.replace(/<p>(<pre>)/g, '$1');
-        html = html.replace(/(<\/pre>)<\/p>/g, '$1');
-        return html;
+        if (!text) return '<p style="color:#94a3b8;font-style:italic;">Sem descrição. Clique no lápis para editar.</p>';
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true, gfm: true });
+            return marked.parse(text);
+        }
+        // Fallback: simple line break rendering
+        return '<p>' + escapeHtml(text).replace(/\n/g, '<br>') + '</p>';
     }
 
     window.assignUser = async function () {
