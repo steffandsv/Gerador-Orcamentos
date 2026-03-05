@@ -779,13 +779,14 @@
         const items = [];
         for (const line of lines) {
             const parts = line.split(';').map(p => p.trim());
-            if (parts.length >= 3) items.push({ descricao: parts[0], quantidade: parts[1], valor_compra: parts[2] });
+            if (parts.length >= 4) items.push({ codigo: parts[0], descricao: parts[1], quantidade: parts[2], valor_compra: parts[3] });
+            else if (parts.length >= 3) items.push({ codigo: '', descricao: parts[0], quantidade: parts[1], valor_compra: parts[2] });
         }
         if (items.length === 0) { status.textContent = '⚠️ Nenhum item válido'; return; }
 
         // Append to description and auto-save
         const existingDesc = document.getElementById('modalDescription').value || '';
-        const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.descricao} | Qtd: ${it.quantidade} | R$ ${it.valor_compra}`).join('\n')}`;
+        const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.codigo ? `[${it.codigo}] ` : ''}${it.descricao} | Qtd: ${it.quantidade} | R$ ${it.valor_compra}`).join('\n')}`;
         document.getElementById('modalDescription').value = existingDesc + csvNote;
         autoSaveDescription();
 
