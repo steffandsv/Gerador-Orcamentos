@@ -53,7 +53,8 @@ orcamentosRouter.get('/form', async (req, res) => {
         res.render('quote_form', {
             empresas: allEmpresas,
             quote_edit,
-            items_edit
+            items_edit,
+            embed: req.query.embed === '1',
         });
     } catch (e) {
         console.error(e);

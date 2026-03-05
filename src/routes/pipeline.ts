@@ -270,6 +270,19 @@ pipelineRouter.get('/api/pipeline/cards/:id/stats', async (req: Request, res: Re
     }
 });
 
+// ── GET /api/pipeline/cards/:id/detail — Single card detail for validation ──
+pipelineRouter.get('/api/pipeline/cards/:id/detail', async (req: Request, res: Response) => {
+    try {
+        const cardId = Number(req.params.id);
+        const [card] = await db.select().from(orcamentos).where(eq(orcamentos.id, cardId));
+        if (!card) return res.status(404).json({ error: 'Card not found' });
+        res.json(card);
+    } catch (e) {
+        console.error('Card detail error:', e);
+        res.status(500).json({ error: 'Failed to load card detail' });
+    }
+});
+
 // ── GET /api/pipeline/stream — SSE ──
 pipelineRouter.get('/api/pipeline/stream', (req: Request, res: Response) => {
     res.writeHead(200, {

@@ -1,4 +1,18 @@
+<% if (typeof embed !== 'undefined' && embed) { %>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Orçamento</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>body { padding: 20px; background: var(--white); } .app-header, .sidebar, .mobile-nav { display: none !important; }</style>
+</head>
+<body>
+<% } else { %>
 <%- include('layout_header') %>
+<% } %>
 <%
     var q_id, q_titulo, q_sol_nome, q_sol_cnpj, q_emp1, q_emp2, q_emp3;
     var q_var, q_tpl1, q_tpl2, q_tpl3, items_json, page_title;
@@ -289,4 +303,9 @@
         }
     });
 </script>
+<% if (typeof embed !== 'undefined' && embed) { %>
+</body>
+</html>
+<% } else { %>
 <%- include('layout_footer') %>
+<% } %>

@@ -441,7 +441,7 @@
         if (!activeCardId) return;
         const overlay = document.getElementById('quoteEditorOverlay');
         const iframe = document.getElementById('quoteEditorIframe');
-        iframe.src = `/orcamentos/form?id=${activeCardId}`;
+        iframe.src = `/orcamentos/form?id=${activeCardId}&embed=1`;
         overlay.style.display = 'flex';
     };
 
@@ -635,9 +635,38 @@
         }
     }
 
-    window.handleSendAction = function () {
+    window.handleSendAction = async function () {
         const target = document.getElementById('modalDeliveryTarget').value.trim();
         if (!target) return;
+
+        // Validate the orcamento is complete before sending
+        if (activeDeliveryType === 'email' && activeCardId) {
+            try {
+                const statsRes = await fetch(`/api/pipeline/cards/${activeCardId}/stats`);
+                const stats = await statsRes.json();
+                if (!stats.item_count || stats.item_count === 0) {
+                    alert('⚠️ O orçamento não possui itens. Edite o orçamento e adicione itens antes de enviar.');
+                    return;
+                }
+                if (stats.total_venda === null || stats.total_venda === 0) {
+                    alert('⚠️ O orçamento não possui valores de venda preenchidos. Complete todos os campos antes de enviar.');
+                    return;
+                }
+
+                // Check empresas are set
+                const cardRes = await fetch(`/api/pipeline/cards/${activeCardId}/detail`);
+                if (cardRes.ok) {
+                    const card = await cardRes.json();
+                    if (!card.empresa1_id || !card.empresa2_id || !card.empresa3_id) {
+                        alert('⚠️ Selecione as 3 empresas no orçamento antes de enviar.');
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error('Validation error:', e);
+            }
+        }
+
         if (activeDeliveryType === 'email') {
             globalThis.open(`mailto:${target}?subject=${encodeURIComponent(document.getElementById('modalTitle').textContent)}`, '_blank');
         } else {
