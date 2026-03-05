@@ -1,45 +1,37 @@
 <%- include('layout_header') %>
-<% /* Pipeline Board — Hybrid View */ %>
+<% /* Pipeline Board — Hybrid View v3 */ %>
 <link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
 
 <div class="pipeline-toolbar">
     <div class="pipeline-toolbar-left">
         <h2 class="pipeline-title"><i class="fas fa-columns"></i> Pipeline</h2>
         <div class="pipeline-filters">
-            <div class="filter-group">
-                <input type="text" id="filterSearch" class="filter-input" placeholder="Buscar por título...">
-            </div>
-            <div class="filter-group">
-                <select id="filterAssignee" class="filter-select">
-                    <option value="">Todos os responsáveis</option>
-                    <% users.forEach(function(u) { %>
-                        <option value="<%= u.id %>"><%= u.nome_completo || u.username %></option>
-                    <% }); %>
-                </select>
-            </div>
-            <div class="filter-group">
-                <select id="filterLabel" class="filter-select">
-                    <option value="">Todas as etiquetas</option>
-                </select>
-            </div>
+            <input type="text" id="filterSearch" class="filter-input" placeholder="Buscar por título...">
+            <select id="filterAssignee" class="filter-select">
+                <option value="">Todos os responsáveis</option>
+                <% users.forEach(function(u) { %>
+                    <option value="<%= u.id %>"><%= u.nome_completo || u.username %></option>
+                <% }); %>
+            </select>
+            <select id="filterLabel" class="filter-select">
+                <option value="">Todas as etiquetas</option>
+            </select>
         </div>
     </div>
     <div class="pipeline-toolbar-right">
         <button class="btn-pipeline btn-labels" onclick="openLabelManager()" title="Gerenciar Etiquetas">
             <i class="fas fa-tags"></i>
         </button>
-        <a href="/orcamentos/form" class="btn-pipeline btn-new">
+        <button class="btn-pipeline btn-new" onclick="openNewCardModal()">
             <i class="fas fa-plus"></i> Nova Cotação
-        </a>
+        </button>
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- PIPELINE BOARD — 4 Active Columns + Summary                -->
-<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ═══════════ PIPELINE BOARD — 3 Active + Summary ═══════════ -->
 <div class="pipeline-board" id="pipelineBoard">
-    <% var activeStages = ['inbox','separada','cotacao','revisao']; %>
-    <% var activeMeta = { inbox: {label:'Inbox',icon:'📩'}, separada: {label:'Separada',icon:'🔒'}, cotacao: {label:'Em Cotação',icon:'⚡'}, revisao: {label:'Revisão',icon:'🔍'} }; %>
+    <% var activeStages = ['inbox','cotacao','revisao']; %>
+    <% var activeMeta = { inbox: {label:'Inbox',icon:'📩'}, cotacao: {label:'Em Cotação',icon:'⚡'}, revisao: {label:'Revisão',icon:'🔍'} }; %>
     <% activeStages.forEach(function(key) { var meta = activeMeta[key]; %>
     <div class="pipeline-column" data-stage="<%= key %>" id="stage-<%= key %>">
         <div class="column-header">
@@ -55,7 +47,7 @@
     </div>
     <% }); %>
 
-    <!-- Enviados Summary Card (5th position) -->
+    <!-- Enviados Summary Card -->
     <div class="pipeline-column enviados-summary-column" id="stage-enviados">
         <div class="column-header">
             <span class="column-icon">✅</span>
@@ -92,9 +84,7 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- ENVIADOS TABLE — Rich, filterable, paginated               -->
-<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ═══════════ ENVIADOS TABLE ═══════════ -->
 <div class="enviados-section" id="enviadosSection">
     <div class="enviados-header">
         <h3 class="enviados-title">✅ Enviados</h3>
@@ -114,23 +104,16 @@
             </select>
         </div>
     </div>
-
     <div class="enviados-table-wrap">
         <table class="enviados-table" id="enviadosTable">
             <thead>
                 <tr>
-                    <th class="sortable" data-sort="titulo" onclick="sortEnviados('titulo')">
-                        Título <i class="fas fa-sort sort-icon"></i>
-                    </th>
+                    <th class="sortable" data-sort="titulo" onclick="sortEnviados('titulo')">Título <i class="fas fa-sort sort-icon"></i></th>
                     <th>Solicitante</th>
                     <th>Responsável</th>
                     <th>Etiquetas</th>
-                    <th class="sortable" data-sort="deadline" onclick="sortEnviados('deadline')">
-                        Data Limite <i class="fas fa-sort sort-icon"></i>
-                    </th>
-                    <th class="sortable active-sort" data-sort="updated_at" onclick="sortEnviados('updated_at')">
-                        Atualizado <i class="fas fa-sort-down sort-icon"></i>
-                    </th>
+                    <th class="sortable" data-sort="deadline" onclick="sortEnviados('deadline')">Data Limite <i class="fas fa-sort sort-icon"></i></th>
+                    <th class="sortable active-sort" data-sort="updated_at" onclick="sortEnviados('updated_at')">Atualizado <i class="fas fa-sort-down sort-icon"></i></th>
                     <th>Resultado</th>
                     <th></th>
                 </tr>
@@ -140,22 +123,16 @@
             </tbody>
         </table>
     </div>
-
-    <div class="enviados-pagination" id="enviadosPagination">
-        <!-- Pagination rendered by JS -->
-    </div>
+    <div class="enviados-pagination" id="enviadosPagination"></div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- CARD DETAIL MODAL                                          -->
-<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ═══════════ CARD DETAIL MODAL ═══════════ -->
 <div class="card-modal-overlay" id="cardModal" style="display:none;">
     <div class="card-modal">
         <div class="card-modal-header">
             <h3 class="card-modal-title" id="modalTitle">—</h3>
             <button class="card-modal-close" onclick="closeCardModal()"><i class="fas fa-times"></i></button>
         </div>
-
         <div class="card-modal-body">
             <div class="card-modal-main">
                 <!-- Description -->
@@ -168,20 +145,6 @@
                         placeholder="Adicione uma descrição detalhada (aceita Markdown)..."
                         oninput="document.getElementById('btnSaveDesc').style.display='inline-flex'"></textarea>
                 </div>
-
-                <!-- CSV Import -->
-                <div class="modal-section">
-                    <div class="section-header">
-                        <i class="fas fa-file-csv"></i> <span>Importar Itens (CSV)</span>
-                    </div>
-                    <textarea id="modalCsvInput" class="modal-textarea-small"
-                        placeholder="Cole CSV: Descrição;Quantidade;Valor (uma linha por item)" rows="3"></textarea>
-                    <button class="btn-inline btn-sm" onclick="importCsvToCard()">
-                        <i class="fas fa-upload"></i> Importar
-                    </button>
-                    <span class="csv-status" id="csvStatus"></span>
-                </div>
-
                 <!-- Comments -->
                 <div class="modal-section">
                     <div class="section-header">
@@ -212,14 +175,16 @@
                     </select>
                 </div>
 
-                <!-- Labels -->
+                <!-- Labels (inline type-to-add) -->
                 <div class="sidebar-section">
                     <label class="sidebar-label"><i class="fas fa-tags"></i> Etiquetas</label>
                     <div id="modalLabels" class="modal-labels-list"></div>
-                    <div class="label-add-row">
-                        <select id="labelAddSelect" class="sidebar-select sidebar-select-sm">
-                            <option value="">+ Adicionar...</option>
-                        </select>
+                    <div class="label-inline-add">
+                        <input type="text" id="labelInlineInput" class="sidebar-input sidebar-input-sm"
+                            placeholder="Adicionar etiqueta..."
+                            onkeydown="handleLabelInputKey(event)"
+                            oninput="showLabelSuggestions()">
+                        <div class="label-suggestions" id="labelSuggestions" style="display:none;"></div>
                     </div>
                 </div>
 
@@ -229,19 +194,13 @@
                     <input type="datetime-local" id="modalDeadline" class="sidebar-input" onchange="saveDeadline()">
                 </div>
 
-                <!-- Outcome (visible for 'enviados' stage) -->
+                <!-- Outcome (for 'enviados') -->
                 <div class="sidebar-section" id="outcomeSection" style="display:none;">
                     <label class="sidebar-label"><i class="fas fa-trophy"></i> Resultado</label>
                     <div class="outcome-buttons">
-                        <button class="outcome-btn outcome-won" data-outcome="won" onclick="setOutcome('won')">
-                            🏆 Vencemos
-                        </button>
-                        <button class="outcome-btn outcome-lost" data-outcome="lost" onclick="setOutcome('lost')">
-                            ❌ Perdemos
-                        </button>
-                        <button class="outcome-btn outcome-pending" data-outcome="" onclick="setOutcome('')">
-                            ⏳ Aguardando
-                        </button>
+                        <button class="outcome-btn outcome-won" data-outcome="won" onclick="setOutcome('won')">🏆 Vencemos</button>
+                        <button class="outcome-btn outcome-lost" data-outcome="lost" onclick="setOutcome('lost')">❌ Perdemos</button>
+                        <button class="outcome-btn outcome-pending" data-outcome="" onclick="setOutcome('')">⏳ Aguardando</button>
                     </div>
                 </div>
 
@@ -250,6 +209,9 @@
                     <label class="sidebar-label"><i class="fas fa-bolt"></i> Ações</label>
                     <a id="btnEditQuote" href="#" class="sidebar-action" target="_blank">
                         <i class="fas fa-edit"></i> Editar Orçamento
+                    </a>
+                    <a href="#" class="sidebar-action" onclick="openCsvImportOverlay(); return false;">
+                        <i class="fas fa-file-csv"></i> Importar CSV
                     </a>
                     <a id="btnPrintQuote" href="#" class="sidebar-action" onclick="generateQuotesFromModal(); return false;">
                         <i class="fas fa-print"></i> Gerar PDFs
@@ -260,9 +222,85 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- LABEL MANAGER MODAL                                        -->
-<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ═══════════ NEW CARD MODAL ═══════════ -->
+<div class="card-modal-overlay" id="newCardModal" style="display:none;">
+    <div class="card-modal" style="max-width:600px;">
+        <div class="card-modal-header">
+            <h3 class="card-modal-title"><i class="fas fa-plus-circle" style="color:var(--accent);margin-right:6px;"></i> Nova Cotação</h3>
+            <button class="card-modal-close" onclick="closeNewCardModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="card-modal-body" style="flex-direction:column; padding:20px 24px;">
+            <div class="modal-section">
+                <label class="sidebar-label"><i class="fas fa-heading"></i> Título *</label>
+                <input type="text" id="newCardTitle" class="sidebar-input" placeholder="Ex: Pregão 042/2026 — Material de Limpeza" autofocus>
+            </div>
+            <div class="modal-section">
+                <label class="sidebar-label"><i class="fas fa-user-tie"></i> Solicitante</label>
+                <input type="text" id="newCardSolicitante" class="sidebar-input" placeholder="Nome do solicitante ou órgão">
+            </div>
+            <div class="modal-section">
+                <label class="sidebar-label"><i class="fas fa-align-left"></i> Descrição</label>
+                <textarea id="newCardDescription" class="modal-textarea" rows="3"
+                    placeholder="Descrição detalhada da cotação..."></textarea>
+            </div>
+            <div class="modal-section" style="display:flex; gap:16px;">
+                <div style="flex:1;">
+                    <label class="sidebar-label"><i class="fas fa-user"></i> Responsável</label>
+                    <select id="newCardAssignee" class="sidebar-select">
+                        <option value="">Ninguém</option>
+                        <% users.forEach(function(u) { %>
+                            <option value="<%= u.id %>"><%= u.nome_completo || u.username %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label class="sidebar-label"><i class="fas fa-clock"></i> Data Limite</label>
+                    <input type="datetime-local" id="newCardDeadline" class="sidebar-input">
+                </div>
+            </div>
+            <div class="modal-section">
+                <label class="sidebar-label"><i class="fas fa-tags"></i> Etiquetas</label>
+                <div id="newCardLabels" class="modal-labels-list" style="margin-bottom:6px;"></div>
+                <div class="label-inline-add">
+                    <input type="text" id="newCardLabelInput" class="sidebar-input sidebar-input-sm"
+                        placeholder="Adicionar etiqueta..."
+                        onkeydown="handleNewCardLabelKey(event)"
+                        oninput="showNewCardLabelSuggestions()">
+                    <div class="label-suggestions" id="newCardLabelSuggestions" style="display:none;"></div>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+                <button class="btn-pipeline btn-labels" onclick="closeNewCardModal()">Cancelar</button>
+                <button class="btn-pipeline btn-new" onclick="submitNewCard()">
+                    <i class="fas fa-plus"></i> Criar Cotação
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ CSV IMPORT OVERLAY ═══════════ -->
+<div class="card-modal-overlay" id="csvOverlay" style="display:none;">
+    <div class="card-modal" style="max-width:550px;">
+        <div class="card-modal-header">
+            <h3 class="card-modal-title"><i class="fas fa-file-csv" style="color:var(--accent);margin-right:6px;"></i> Importar Itens CSV</h3>
+            <button class="card-modal-close" onclick="closeCsvOverlay()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="card-modal-body" style="flex-direction:column; padding:20px 24px;">
+            <p style="font-size:0.85rem; color:#64748b; margin:0 0 12px;">Cole os dados CSV abaixo. Formato: <code>Descrição;Quantidade;Valor</code> (uma linha por item).</p>
+            <textarea id="csvOverlayInput" class="modal-textarea" rows="8"
+                placeholder="Material de Limpeza;100;5.50&#10;Papel A4;50;22.90&#10;..."></textarea>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+                <span class="csv-status" id="csvOverlayStatus"></span>
+                <button class="btn-pipeline btn-new" onclick="importCsvFromOverlay()">
+                    <i class="fas fa-upload"></i> Importar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ LABEL MANAGER MODAL ═══════════ -->
 <div class="card-modal-overlay" id="labelManagerModal" style="display:none;">
     <div class="card-modal label-manager-modal">
         <div class="card-modal-header">

@@ -1,21 +1,22 @@
 // ══════════════════════════════════════════════════════════════
-// Pipeline Board — Client-Side Engine (Hybrid View)
-// 4 Active Columns + Enviados Summary & Table
-// Drag & Drop · SSE Real-time · Card Modal · Labels · Comments
+// Pipeline Board — Client-Side Engine (Hybrid View v3)
+// 3 Active Columns + Enviados Summary & Table
+// New Card Modal · CSV Overlay · Inline Label Creation
 // ══════════════════════════════════════════════════════════════
 
 (function () {
     'use strict';
 
-    const ACTIVE_STAGES = ['inbox', 'separada', 'cotacao', 'revisao'];
-    const ALL_STAGES = ['inbox', 'separada', 'cotacao', 'revisao', 'enviados'];
+    const ACTIVE_STAGES = ['inbox', 'cotacao', 'revisao'];
     const USERS = window.__PIPELINE_USERS__ || [];
     const CURRENT_USER = window.__CURRENT_USER__ || {};
 
-    let allCards = [];     // Active stage cards only
+    let allCards = [];
     let allLabels = [];
     let activeCardId = null;
+    let activeCardStage = null;
     let draggedCardId = null;
+    let newCardSelectedLabels = [];
 
     // Enviados table state
     let enviadosState = { page: 1, sortBy: 'updated_at', sortDir: 'desc', search: '', outcome: '', assignee: '' };
@@ -62,11 +63,12 @@
         try {
             const res = await fetch('/api/pipeline/enviados/stats');
             const data = await res.json();
-            document.getElementById('glanceTotalNum').textContent = data.total;
-            document.getElementById('glancePendingNum').textContent = data.pending;
-            document.getElementById('glanceWonNum').textContent = data.won;
-            document.getElementById('glanceLostNum').textContent = data.lost;
-            document.getElementById('count-enviados').textContent = data.total;
+            const el = (id) => document.getElementById(id);
+            el('glanceTotalNum').textContent = data.total;
+            el('glancePendingNum').textContent = data.pending;
+            el('glanceWonNum').textContent = data.won;
+            el('glanceLostNum').textContent = data.lost;
+            el('count-enviados').textContent = data.total;
         } catch (e) {
             console.error('Failed to load enviados stats:', e);
         }
@@ -74,11 +76,7 @@
 
     async function loadEnviados() {
         const s = enviadosState;
-        const params = new URLSearchParams({
-            page: String(s.page),
-            sortBy: s.sortBy,
-            sortDir: s.sortDir,
-        });
+        const params = new URLSearchParams({ page: String(s.page), sortBy: s.sortBy, sortDir: s.sortDir });
         if (s.search) params.set('search', s.search);
         if (s.outcome) params.set('outcome', s.outcome);
         if (s.assignee) params.set('assignee', s.assignee);
@@ -93,11 +91,11 @@
     }
 
     // ══════════════════════════════════════════════════════════
-    // BOARD RENDERING (4 active columns only)
+    // BOARD RENDERING
     // ══════════════════════════════════════════════════════════
 
     function renderBoard() {
-        const searchTerm = document.getElementById('filterSearch')?.value?.toLowerCase() || '';
+        const searchTerm = (document.getElementById('filterSearch')?.value || '').toLowerCase();
         const filterAssignee = document.getElementById('filterAssignee')?.value || '';
         const filterLabel = document.getElementById('filterLabel')?.value || '';
 
@@ -116,7 +114,6 @@
                 .sort((a, b) => a.position - b.position);
 
             body.innerHTML = stageCards.map(c => renderCard(c)).join('');
-
             const countEl = document.getElementById(`count-${stage}`);
             if (countEl) countEl.textContent = stageCards.length;
         });
@@ -137,11 +134,9 @@
             ? `<span class="deadline-badge ${urgencyClass}"><i class="fas fa-clock"></i> ${formatDeadline(card.deadline)}</span>`
             : '';
 
-        const outcomeHtml = card.outcome === 'won'
-            ? '<span class="outcome-indicator outcome-won-indicator">🏆</span>'
-            : card.outcome === 'lost'
-                ? '<span class="outcome-indicator outcome-lost-indicator">❌</span>'
-                : '';
+        let outcomeHtml = '';
+        if (card.outcome === 'won') outcomeHtml = '<span class="outcome-indicator">🏆</span>';
+        else if (card.outcome === 'lost') outcomeHtml = '<span class="outcome-indicator">❌</span>';
 
         const metaHtml = [];
         if (card.item_count > 0) metaHtml.push(`<span class="card-meta-item"><i class="fas fa-list"></i> ${card.item_count}</span>`);
@@ -149,10 +144,8 @@
 
         return `
         <div class="pipeline-card ${urgencyClass}" data-id="${card.id}"
-             draggable="true"
-             ondragstart="handleDragStart(event, ${card.id})"
-             ondragend="handleDragEnd(event)"
-             onclick="openCardModal(${card.id})">
+             draggable="true" ondragstart="handleDragStart(event, ${card.id})"
+             ondragend="handleDragEnd(event)" onclick="openCardModal(${card.id})">
             ${labelsHtml ? `<div class="card-labels">${labelsHtml}</div>` : ''}
             <div class="card-title">${escapeHtml(card.titulo)} ${outcomeHtml}</div>
             ${card.solicitante_nome ? `<div class="card-solicitante">${escapeHtml(card.solicitante_nome)}</div>` : ''}
@@ -164,7 +157,7 @@
     }
 
     // ══════════════════════════════════════════════════════════
-    // ENVIADOS TABLE RENDERING
+    // ENVIADOS TABLE
     // ══════════════════════════════════════════════════════════
 
     function renderEnviadosTable(rows, page, totalPages, totalCount) {
@@ -177,21 +170,13 @@
         }
 
         tbody.innerHTML = rows.map(r => {
-            const assigneeName = r.assignee
-                ? (r.assignee.nome_completo || r.assignee.username)
-                : '—';
-
+            const assigneeName = r.assignee ? (r.assignee.nome_completo || r.assignee.username) : '—';
             const labelsHtml = r.labels.map(l =>
                 `<span class="label-pill" style="background:${l.color}20; color:${l.color}; border-color:${l.color}40">${l.name}</span>`
             ).join(' ');
 
-            const deadlineStr = r.deadline
-                ? new Date(r.deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-                : '—';
-
-            const updatedStr = r.updated_at
-                ? new Date(r.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-                : '—';
+            const deadlineStr = r.deadline ? new Date(r.deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '—';
+            const updatedStr = r.updated_at ? new Date(r.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '—';
 
             let outcomeBadge = '<span class="outcome-badge outcome-badge-pending">⏳ Aguardando</span>';
             if (r.outcome === 'won') outcomeBadge = '<span class="outcome-badge outcome-badge-won">🏆 Vencemos</span>';
@@ -214,67 +199,38 @@
             </tr>`;
         }).join('');
 
-        // Pagination
         renderPagination(page, totalPages, totalCount);
     }
 
     function renderPagination(page, totalPages, totalCount) {
-        const container = document.getElementById('enviadosPagination');
-        if (totalPages <= 1) {
-            container.innerHTML = `<span class="pagination-info">${totalCount} registro${totalCount !== 1 ? 's' : ''}</span>`;
-            return;
-        }
-
-        let html = `<span class="pagination-info">${totalCount} registros · Página ${page} de ${totalPages}</span>`;
-        html += '<div class="pagination-buttons">';
-
-        if (page > 1) {
-            html += `<button class="pagination-btn" onclick="goToEnviadosPage(${page - 1})"><i class="fas fa-chevron-left"></i></button>`;
-        }
-
-        // Show page numbers
-        const start = Math.max(1, page - 2);
-        const end = Math.min(totalPages, page + 2);
-        for (let i = start; i <= end; i++) {
-            html += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="goToEnviadosPage(${i})">${i}</button>`;
-        }
-
-        if (page < totalPages) {
-            html += `<button class="pagination-btn" onclick="goToEnviadosPage(${page + 1})"><i class="fas fa-chevron-right"></i></button>`;
-        }
-
-        html += '</div>';
-        container.innerHTML = html;
+        const c = document.getElementById('enviadosPagination');
+        if (totalPages <= 1) { c.innerHTML = `<span class="pagination-info">${totalCount} registro${totalCount !== 1 ? 's' : ''}</span>`; return; }
+        let h = `<span class="pagination-info">${totalCount} registros · Página ${page} de ${totalPages}</span><div class="pagination-buttons">`;
+        if (page > 1) h += `<button class="pagination-btn" onclick="goToEnviadosPage(${page - 1})"><i class="fas fa-chevron-left"></i></button>`;
+        const start = Math.max(1, page - 2), end = Math.min(totalPages, page + 2);
+        for (let i = start; i <= end; i++) h += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="goToEnviadosPage(${i})">${i}</button>`;
+        if (page < totalPages) h += `<button class="pagination-btn" onclick="goToEnviadosPage(${page + 1})"><i class="fas fa-chevron-right"></i></button>`;
+        h += '</div>';
+        c.innerHTML = h;
     }
 
-    window.goToEnviadosPage = function (page) {
-        enviadosState.page = page;
-        loadEnviados();
-    };
+    window.goToEnviadosPage = function (p) { enviadosState.page = p; loadEnviados(); };
 
     window.sortEnviados = function (field) {
-        if (enviadosState.sortBy === field) {
-            enviadosState.sortDir = enviadosState.sortDir === 'desc' ? 'asc' : 'desc';
-        } else {
-            enviadosState.sortBy = field;
-            enviadosState.sortDir = 'desc';
-        }
+        enviadosState.sortDir = (enviadosState.sortBy === field) ? (enviadosState.sortDir === 'desc' ? 'asc' : 'desc') : 'desc';
+        enviadosState.sortBy = field;
         enviadosState.page = 1;
-
-        // Update sort icons
         document.querySelectorAll('.enviados-table th').forEach(th => {
             th.classList.remove('active-sort');
             const icon = th.querySelector('.sort-icon');
             if (icon) icon.className = 'fas fa-sort sort-icon';
         });
-
         const activeTh = document.querySelector(`th[data-sort="${field}"]`);
         if (activeTh) {
             activeTh.classList.add('active-sort');
             const icon = activeTh.querySelector('.sort-icon');
             if (icon) icon.className = `fas fa-sort-${enviadosState.sortDir === 'desc' ? 'down' : 'up'} sort-icon`;
         }
-
         loadEnviados();
     };
 
@@ -284,13 +240,11 @@
             enviadosState.page = 1;
             loadEnviados();
         }, 300));
-
         document.getElementById('enviadosOutcome')?.addEventListener('change', () => {
             enviadosState.outcome = document.getElementById('enviadosOutcome').value;
             enviadosState.page = 1;
             loadEnviados();
         });
-
         document.getElementById('enviadosAssignee')?.addEventListener('change', () => {
             enviadosState.assignee = document.getElementById('enviadosAssignee').value;
             enviadosState.page = 1;
@@ -308,43 +262,28 @@
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', cardId);
     };
-
     window.handleDragEnd = function (e) {
         e.target.classList.remove('dragging');
         document.querySelectorAll('.column-body').forEach(el => el.classList.remove('drag-over'));
         draggedCardId = null;
     };
-
-    window.handleDragOver = function (e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        e.currentTarget.classList.add('drag-over');
-    };
-
-    window.handleDragLeave = function (e) {
-        e.currentTarget.classList.remove('drag-over');
-    };
+    window.handleDragOver = function (e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('drag-over'); };
+    window.handleDragLeave = function (e) { e.currentTarget.classList.remove('drag-over'); };
 
     window.handleDrop = async function (e, targetStage) {
         e.preventDefault();
         e.currentTarget.classList.remove('drag-over');
         const cardId = Number.parseInt(e.dataTransfer.getData('text/plain'));
         if (!cardId) return;
-
         const card = allCards.find(c => c.id === cardId);
         if (!card || card.stage === targetStage) return;
 
-        const oldStage = card.stage;
-
         if (targetStage === 'enviados') {
-            // Moving to Enviados — remove from active cards, update server
             allCards = allCards.filter(c => c.id !== cardId);
             renderBoard();
         } else {
-            // Moving between active stages
             card.stage = targetStage;
-            const targetCards = allCards.filter(c => c.stage === targetStage && c.id !== cardId);
-            card.position = targetCards.length;
+            card.position = allCards.filter(c => c.stage === targetStage && c.id !== cardId).length;
             renderBoard();
         }
 
@@ -354,32 +293,10 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ stage: targetStage, position: 0 }),
             });
-
-            if (targetStage === 'enviados') {
-                loadEnviadosStats();
-                loadEnviados();
-            } else if (oldStage === 'enviados') {
-                loadEnviadosStats();
-                loadEnviados();
-            }
-
-            // Reorder within target stage
-            if (targetStage !== 'enviados') {
-                const orderedIds = allCards
-                    .filter(c => c.stage === targetStage)
-                    .sort((a, b) => a.position - b.position)
-                    .map(c => c.id);
-
-                await fetch('/api/pipeline/reorder', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cardIds: orderedIds, stage: targetStage }),
-                });
-            }
+            if (targetStage === 'enviados') { loadEnviadosStats(); loadEnviados(); }
         } catch (err) {
-            card.stage = oldStage;
-            loadCards();
             console.error('Move failed:', err);
+            loadCards();
         }
     };
 
@@ -389,64 +306,57 @@
 
     function connectSSE() {
         const es = new EventSource('/api/pipeline/stream');
-
         es.addEventListener('card_moved', (e) => {
             const data = JSON.parse(e.data);
             if (data.movedBy === CURRENT_USER.username) return;
-            loadCards();
-            loadEnviadosStats();
-            loadEnviados();
+            loadCards(); loadEnviadosStats(); loadEnviados();
         });
-
-        es.addEventListener('card_updated', () => {
-            loadCards();
-            loadEnviadosStats();
-            loadEnviados();
-        });
-
+        es.addEventListener('card_updated', () => { loadCards(); loadEnviadosStats(); loadEnviados(); });
         es.addEventListener('card_assigned', (e) => {
             const data = JSON.parse(e.data);
             const card = allCards.find(c => c.id === data.cardId);
             if (card) {
                 card.assigned_to = data.user_id;
-                card.assignee = data.user_id
-                    ? USERS.find(u => u.id === data.user_id) || null
-                    : null;
+                card.assignee = data.user_id ? USERS.find(u => u.id === data.user_id) || null : null;
                 renderBoard();
             }
             loadEnviados();
         });
-
         es.addEventListener('card_label_added', () => { loadCards(); loadEnviados(); });
         es.addEventListener('card_label_removed', () => { loadCards(); loadEnviados(); });
         es.addEventListener('label_created', () => loadLabels());
         es.addEventListener('label_updated', () => loadLabels());
         es.addEventListener('label_deleted', () => { loadLabels(); loadCards(); loadEnviados(); });
-        es.addEventListener('comment_added', () => {
-            if (activeCardId) loadComments(activeCardId);
-        });
-
-        es.onerror = () => {
-            setTimeout(connectSSE, 3000);
-            es.close();
-        };
+        es.addEventListener('comment_added', () => { if (activeCardId) loadComments(activeCardId); });
+        es.onerror = () => { setTimeout(connectSSE, 3000); es.close(); };
     }
 
     // ══════════════════════════════════════════════════════════
-    // CARD MODAL
+    // CARD DETAIL MODAL
     // ══════════════════════════════════════════════════════════
 
     window.openCardModal = async function (cardId) {
         activeCardId = cardId;
 
-        // Try active cards first, then fetch from server if it's an enviados card
+        // Try active cards, then fetch from API (for enviados)
         let card = allCards.find(c => c.id === cardId);
         if (!card) {
-            // Fetch card details from API for enviados cards
             try {
                 const res = await fetch('/api/pipeline/cards');
                 const data = await res.json();
                 card = (data.cards || []).find(c => c.id === cardId);
+            } catch (e) { /* fallback below */ }
+        }
+        // Still not found — fetch single card via enviados endpoint
+        if (!card) {
+            try {
+                const res = await fetch(`/api/pipeline/enviados?search=&page=1&sortBy=updated_at&sortDir=desc`);
+                const data = await res.json();
+                card = (data.rows || []).find(r => r.id === cardId);
+                if (card) {
+                    card.labels = card.labels || [];
+                    card.stage = 'enviados';
+                }
             } catch (e) {
                 console.error('Failed to fetch card:', e);
                 return;
@@ -454,16 +364,14 @@
         }
         if (!card) return;
 
+        activeCardStage = card.stage;
         document.getElementById('cardModal').style.display = 'flex';
         document.getElementById('modalTitle').textContent = card.titulo;
         document.getElementById('modalDescription').value = card.description || '';
         document.getElementById('btnSaveDesc').style.display = 'none';
         document.getElementById('modalAssignee').value = card.assigned_to || '';
-        document.getElementById('modalDeadline').value = card.deadline
-            ? new Date(card.deadline).toISOString().slice(0, 16)
-            : '';
+        document.getElementById('modalDeadline').value = card.deadline ? new Date(card.deadline).toISOString().slice(0, 16) : '';
 
-        // Outcome section — always visible for enviados
         const outcomeSection = document.getElementById('outcomeSection');
         if (card.stage === 'enviados') {
             outcomeSection.style.display = 'block';
@@ -482,20 +390,21 @@
     window.closeCardModal = function () {
         document.getElementById('cardModal').style.display = 'none';
         activeCardId = null;
+        activeCardStage = null;
     };
 
     document.addEventListener('click', (e) => {
         if (e.target.id === 'cardModal') closeCardModal();
         if (e.target.id === 'labelManagerModal') closeLabelManager();
+        if (e.target.id === 'newCardModal') closeNewCardModal();
+        if (e.target.id === 'csvOverlay') closeCsvOverlay();
     });
 
-    // ── Save Description ──
     window.saveDescription = async function () {
         if (!activeCardId) return;
         const desc = document.getElementById('modalDescription').value;
         await fetch(`/api/pipeline/cards/${activeCardId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ description: desc }),
         });
         document.getElementById('btnSaveDesc').style.display = 'none';
@@ -507,8 +416,7 @@
         if (!activeCardId) return;
         const userId = document.getElementById('modalAssignee').value;
         await fetch(`/api/pipeline/cards/${activeCardId}/assign`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId ? Number(userId) : null }),
         });
         const card = allCards.find(c => c.id === activeCardId);
@@ -524,30 +432,22 @@
         if (!activeCardId) return;
         const val = document.getElementById('modalDeadline').value;
         await fetch(`/api/pipeline/cards/${activeCardId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ deadline: val || null }),
         });
         const card = allCards.find(c => c.id === activeCardId);
-        if (card) {
-            card.deadline = val || null;
-            renderBoard();
-        }
+        if (card) { card.deadline = val || null; renderBoard(); }
     };
 
     window.setOutcome = async function (outcome) {
         if (!activeCardId) return;
         await fetch(`/api/pipeline/cards/${activeCardId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ outcome }),
         });
         document.querySelectorAll('.outcome-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.outcome === outcome);
         });
-        const card = allCards.find(c => c.id === activeCardId);
-        if (card) card.outcome = outcome || null;
-        renderBoard();
         loadEnviadosStats();
         loadEnviados();
     };
@@ -560,7 +460,135 @@
     };
 
     // ══════════════════════════════════════════════════════════
-    // LABELS
+    // NEW CARD MODAL
+    // ══════════════════════════════════════════════════════════
+
+    window.openNewCardModal = function () {
+        newCardSelectedLabels = [];
+        document.getElementById('newCardModal').style.display = 'flex';
+        document.getElementById('newCardTitle').value = '';
+        document.getElementById('newCardSolicitante').value = '';
+        document.getElementById('newCardDescription').value = '';
+        document.getElementById('newCardAssignee').value = '';
+        document.getElementById('newCardDeadline').value = '';
+        document.getElementById('newCardLabelInput').value = '';
+        renderNewCardLabels();
+        setTimeout(() => document.getElementById('newCardTitle').focus(), 100);
+    };
+
+    window.closeNewCardModal = function () {
+        document.getElementById('newCardModal').style.display = 'none';
+    };
+
+    function renderNewCardLabels() {
+        const container = document.getElementById('newCardLabels');
+        container.innerHTML = newCardSelectedLabels.map(l =>
+            `<span class="label-pill label-pill-lg" style="background:${l.color}20; color:${l.color}; border-color:${l.color}40">
+                ${l.name}
+                <button class="label-remove" onclick="removeNewCardLabel(${l.id}); event.stopPropagation();">×</button>
+            </span>`
+        ).join('');
+    }
+
+    window.removeNewCardLabel = function (id) {
+        newCardSelectedLabels = newCardSelectedLabels.filter(l => l.id !== id);
+        renderNewCardLabels();
+    };
+
+    window.handleNewCardLabelKey = function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const input = document.getElementById('newCardLabelInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            // Check if existing label matches
+            const existing = allLabels.find(l => l.name.toLowerCase() === text.toLowerCase());
+            if (existing && !newCardSelectedLabels.some(l => l.id === existing.id)) {
+                newCardSelectedLabels.push({ id: existing.id, name: existing.name, color: existing.color });
+                input.value = '';
+                renderNewCardLabels();
+                hideSuggestions('newCardLabelSuggestions');
+                return;
+            }
+
+            // Create new label
+            createAndAddLabel(text, input, 'newCard');
+        }
+    };
+
+    window.showNewCardLabelSuggestions = function () {
+        showLabelSuggestionsFor('newCardLabelInput', 'newCardLabelSuggestions', 'newCard');
+    };
+
+    window.submitNewCard = async function () {
+        const titulo = document.getElementById('newCardTitle').value.trim();
+        if (!titulo) { document.getElementById('newCardTitle').focus(); return; }
+
+        const payload = {
+            titulo,
+            solicitante_nome: document.getElementById('newCardSolicitante').value.trim(),
+            description: document.getElementById('newCardDescription').value.trim(),
+            assigned_to: document.getElementById('newCardAssignee').value || null,
+            deadline: document.getElementById('newCardDeadline').value || null,
+            label_ids: newCardSelectedLabels.map(l => l.id),
+        };
+
+        try {
+            const res = await fetch('/api/pipeline/cards', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeNewCardModal();
+                loadCards();
+            }
+        } catch (e) {
+            console.error('Failed to create card:', e);
+        }
+    };
+
+    // ══════════════════════════════════════════════════════════
+    // CSV IMPORT OVERLAY
+    // ══════════════════════════════════════════════════════════
+
+    window.openCsvImportOverlay = function () {
+        document.getElementById('csvOverlay').style.display = 'flex';
+        document.getElementById('csvOverlayInput').value = '';
+        document.getElementById('csvOverlayStatus').textContent = '';
+    };
+
+    window.closeCsvOverlay = function () {
+        document.getElementById('csvOverlay').style.display = 'none';
+    };
+
+    window.importCsvFromOverlay = async function () {
+        if (!activeCardId) return;
+        const csvText = document.getElementById('csvOverlayInput').value.trim();
+        const status = document.getElementById('csvOverlayStatus');
+        if (!csvText) { status.textContent = '⚠️ Cole o CSV primeiro'; return; }
+
+        const lines = csvText.split('\n').filter(l => l.trim());
+        const items = [];
+        for (const line of lines) {
+            const parts = line.split(';').map(p => p.trim());
+            if (parts.length >= 3) items.push({ descricao: parts[0], quantidade: parts[1], valor_compra: parts[2] });
+        }
+        if (items.length === 0) { status.textContent = '⚠️ Nenhum item válido'; return; }
+
+        // Append to description
+        const existingDesc = document.getElementById('modalDescription').value || '';
+        const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.descricao} | Qtd: ${it.quantidade} | R$ ${it.valor_compra}`).join('\n')}`;
+        document.getElementById('modalDescription').value = existingDesc + csvNote;
+        document.getElementById('btnSaveDesc').style.display = 'inline-flex';
+
+        status.textContent = `✅ ${items.length} itens adicionados à descrição.`;
+        setTimeout(() => closeCsvOverlay(), 1500);
+    };
+
+    // ══════════════════════════════════════════════════════════
+    // LABELS — Inline type-to-add
     // ══════════════════════════════════════════════════════════
 
     function renderModalLabels(card) {
@@ -571,25 +599,135 @@
                 <button class="label-remove" onclick="removeCardLabel(${card.id}, ${l.id}); event.stopPropagation();">×</button>
             </span>`
         ).join('');
+    }
 
-        const select = document.getElementById('labelAddSelect');
-        const assignedIds = new Set(card.labels.map(l => l.id));
-        select.innerHTML = '<option value="">+ Adicionar...</option>';
-        allLabels.filter(l => !assignedIds.has(l.id)).forEach(l => {
-            select.innerHTML += `<option value="${l.id}" data-color="${l.color}">${l.name}</option>`;
-        });
-        select.onchange = () => {
-            if (select.value) {
-                addCardLabel(card.id, Number(select.value));
-                select.value = '';
+    window.showLabelSuggestions = function () {
+        showLabelSuggestionsFor('labelInlineInput', 'labelSuggestions', 'modal');
+    };
+
+    window.handleLabelInputKey = function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const input = document.getElementById('labelInlineInput');
+            const text = input.value.trim();
+            if (!text || !activeCardId) return;
+
+            // Check existing
+            const existing = allLabels.find(l => l.name.toLowerCase() === text.toLowerCase());
+            if (existing) {
+                addCardLabel(activeCardId, existing.id);
+                input.value = '';
+                hideSuggestions('labelSuggestions');
+                return;
             }
-        };
+            // Create new
+            createAndAddLabel(text, input, 'modal');
+        }
+    };
+
+    function showLabelSuggestionsFor(inputId, dropdownId, context) {
+        const input = document.getElementById(inputId);
+        const dropdown = document.getElementById(dropdownId);
+        const query = (input.value || '').trim().toLowerCase();
+
+        if (!query) { dropdown.style.display = 'none'; return; }
+
+        // Get already-assigned IDs
+        let assignedIds = [];
+        if (context === 'modal' && activeCardId) {
+            const card = allCards.find(c => c.id === activeCardId);
+            assignedIds = (card?.labels || []).map(l => l.id);
+        } else if (context === 'newCard') {
+            assignedIds = newCardSelectedLabels.map(l => l.id);
+        }
+
+        const matches = allLabels.filter(l =>
+            l.name.toLowerCase().includes(query) && !assignedIds.includes(l.id)
+        );
+
+        if (matches.length === 0 && query.length > 0) {
+            dropdown.innerHTML = `<div class="label-suggestion-item label-suggestion-create" onclick="createAndAddLabelFromSuggestion('${escapeHtml(query)}', '${inputId}', '${context}')">
+                <i class="fas fa-plus"></i> Criar "<strong>${escapeHtml(query)}</strong>"
+            </div>`;
+            dropdown.style.display = 'block';
+            return;
+        }
+
+        if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+
+        let html = matches.map(l =>
+            `<div class="label-suggestion-item" onclick="selectLabelSuggestion(${l.id}, '${inputId}', '${dropdownId}', '${context}')">
+                <span class="label-pill" style="background:${l.color}20; color:${l.color}; border-color:${l.color}40">${l.name}</span>
+            </div>`
+        ).join('');
+
+        // Always show "create new" option at the bottom
+        const exactMatch = allLabels.some(l => l.name.toLowerCase() === query);
+        if (!exactMatch) {
+            html += `<div class="label-suggestion-item label-suggestion-create" onclick="createAndAddLabelFromSuggestion('${escapeHtml(query)}', '${inputId}', '${context}')">
+                <i class="fas fa-plus"></i> Criar "<strong>${escapeHtml(query)}</strong>"
+            </div>`;
+        }
+
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+    }
+
+    function hideSuggestions(dropdownId) {
+        const dd = document.getElementById(dropdownId);
+        if (dd) dd.style.display = 'none';
+    }
+
+    window.selectLabelSuggestion = function (labelId, inputId, dropdownId, context) {
+        const input = document.getElementById(inputId);
+        input.value = '';
+        hideSuggestions(dropdownId);
+
+        if (context === 'modal' && activeCardId) {
+            addCardLabel(activeCardId, labelId);
+        } else if (context === 'newCard') {
+            const label = allLabels.find(l => l.id === labelId);
+            if (label && !newCardSelectedLabels.some(l => l.id === labelId)) {
+                newCardSelectedLabels.push({ id: label.id, name: label.name, color: label.color });
+                renderNewCardLabels();
+            }
+        }
+    };
+
+    window.createAndAddLabelFromSuggestion = function (name, inputId, context) {
+        const input = document.getElementById(inputId);
+        createAndAddLabel(name, input, context);
+    };
+
+    async function createAndAddLabel(name, inputEl, context) {
+        try {
+            const res = await fetch('/api/pipeline/labels', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, color: '#3b82f6' }),
+            });
+            const data = await res.json();
+            if (data.success && data.label) {
+                allLabels.push(data.label);
+                populateLabelFilters();
+                inputEl.value = '';
+                hideSuggestions('labelSuggestions');
+                hideSuggestions('newCardLabelSuggestions');
+
+                if (context === 'modal' && activeCardId) {
+                    addCardLabel(activeCardId, data.label.id);
+                } else if (context === 'newCard') {
+                    newCardSelectedLabels.push({ id: data.label.id, name: data.label.name, color: data.label.color });
+                    renderNewCardLabels();
+                }
+            }
+        } catch (e) {
+            console.error('Failed to create label:', e);
+        }
     }
 
     async function addCardLabel(cardId, labelId) {
         await fetch(`/api/pipeline/cards/${cardId}/labels`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ label_id: labelId }),
         });
         const label = allLabels.find(l => l.id === labelId);
@@ -611,18 +749,15 @@
         }
     };
 
+    // ── Label Manager ──
     window.openLabelManager = function () {
         document.getElementById('labelManagerModal').style.display = 'flex';
         renderLabelManagerList();
     };
-
-    window.closeLabelManager = function () {
-        document.getElementById('labelManagerModal').style.display = 'none';
-    };
+    window.closeLabelManager = function () { document.getElementById('labelManagerModal').style.display = 'none'; };
 
     function renderLabelManagerList() {
-        const container = document.getElementById('labelManagerList');
-        container.innerHTML = allLabels.map(l =>
+        document.getElementById('labelManagerList').innerHTML = allLabels.map(l =>
             `<div class="label-manager-item">
                 <span class="label-pill label-pill-lg" style="background:${l.color}20; color:${l.color}; border-color:${l.color}40">${l.name}</span>
                 <div class="label-manager-actions">
@@ -637,10 +772,8 @@
         const name = document.getElementById('newLabelName').value.trim();
         const color = document.getElementById('newLabelColor').value;
         if (!name) return;
-
         const res = await fetch('/api/pipeline/labels', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, color }),
         });
         const data = await res.json();
@@ -655,10 +788,8 @@
     window.updateLabel = async function (id, name, color) {
         const label = allLabels.find(l => l.id === id);
         if (!label) return;
-
         await fetch(`/api/pipeline/labels/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name || label.name, color: color || label.color }),
         });
         if (name) label.name = name;
@@ -682,9 +813,7 @@
         const currentVal = filterSelect?.value || '';
         if (filterSelect) {
             filterSelect.innerHTML = '<option value="">Todas as etiquetas</option>';
-            allLabels.forEach(l => {
-                filterSelect.innerHTML += `<option value="${l.id}">${l.name}</option>`;
-            });
+            allLabels.forEach(l => { filterSelect.innerHTML += `<option value="${l.id}">${l.name}</option>`; });
             filterSelect.value = currentVal;
         }
     }
@@ -696,18 +825,13 @@
     async function loadComments(cardId) {
         const list = document.getElementById('commentsList');
         list.innerHTML = '<div class="comment-loading">Carregando...</div>';
-
         try {
             const res = await fetch(`/api/pipeline/cards/${cardId}/comments`);
             const data = await res.json();
             const cmnts = data.comments || [];
-
-            if (cmnts.length === 0) {
-                list.innerHTML = '<div class="comment-empty">Nenhum comentário ainda.</div>';
-                return;
-            }
-
-            list.innerHTML = cmnts.map(c => renderComment(c)).join('');
+            list.innerHTML = cmnts.length === 0
+                ? '<div class="comment-empty">Nenhum comentário ainda.</div>'
+                : cmnts.map(c => renderComment(c)).join('');
         } catch (e) {
             list.innerHTML = '<div class="comment-empty">Erro ao carregar comentários.</div>';
         }
@@ -716,19 +840,10 @@
     function renderComment(c) {
         const initials = (c.nome_completo || c.username || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
         const date = new Date(c.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-        const bodyHtml = formatMentions(escapeHtml(c.body));
-
-        return `
-        <div class="comment-item" data-id="${c.id}">
-            <div class="comment-avatar">${initials}</div>
-            <div class="comment-content">
-                <div class="comment-header">
-                    <strong>${escapeHtml(c.nome_completo || c.username)}</strong>
-                    <span class="comment-date">${date}</span>
-                </div>
-                <div class="comment-body">${bodyHtml}</div>
-            </div>
-        </div>`;
+        return `<div class="comment-item"><div class="comment-avatar">${initials}</div>
+            <div class="comment-content"><div class="comment-header"><strong>${escapeHtml(c.nome_completo || c.username)}</strong>
+            <span class="comment-date">${date}</span></div>
+            <div class="comment-body">${formatMentions(escapeHtml(c.body))}</div></div></div>`;
     }
 
     window.submitComment = async function () {
@@ -736,44 +851,27 @@
         const input = document.getElementById('commentInput');
         const body = input.value.trim();
         if (!body) return;
-
         await fetch(`/api/pipeline/cards/${activeCardId}/comments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ body }),
         });
-
         input.value = '';
         loadComments(activeCardId);
-        const card = allCards.find(c => c.id === activeCardId);
-        if (card) card.comment_count++;
-        renderBoard();
     };
 
     window.handleCommentKey = function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            submitComment();
-        }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); }
     };
 
     function setupMentionAutocomplete() {
         const input = document.getElementById('commentInput');
         const dropdown = document.getElementById('mentionDropdown');
-
         input.addEventListener('input', () => {
-            const val = input.value;
-            const cursorPos = input.selectionStart;
-            const textBeforeCursor = val.substring(0, cursorPos);
-            const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-
-            if (mentionMatch) {
-                const query = mentionMatch[1].toLowerCase();
-                const matches = USERS.filter(u =>
-                    (u.username || '').toLowerCase().includes(query) ||
-                    (u.nome_completo || '').toLowerCase().includes(query)
-                );
-
+            const textBefore = input.value.substring(0, input.selectionStart);
+            const m = textBefore.match(/@(\w*)$/);
+            if (m) {
+                const q = m[1].toLowerCase();
+                const matches = USERS.filter(u => (u.username || '').toLowerCase().includes(q) || (u.nome_completo || '').toLowerCase().includes(q));
                 if (matches.length > 0) {
                     dropdown.innerHTML = matches.map(u =>
                         `<div class="mention-item" onclick="insertMention('${u.username}')">${u.nome_completo || u.username} <span class="mention-username">@${u.username}</span></div>`
@@ -784,70 +882,22 @@
             }
             dropdown.style.display = 'none';
         });
-
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.comment-composer')) {
-                dropdown.style.display = 'none';
-            }
+            if (!e.target.closest('.comment-composer')) dropdown.style.display = 'none';
         });
     }
 
     window.insertMention = function (username) {
         const input = document.getElementById('commentInput');
-        const val = input.value;
-        const cursorPos = input.selectionStart;
-        const textBeforeCursor = val.substring(0, cursorPos);
-        const textAfterCursor = val.substring(cursorPos);
-        const newBefore = textBeforeCursor.replace(/@\w*$/, `@${username} `);
-        input.value = newBefore + textAfterCursor;
+        const before = input.value.substring(0, input.selectionStart).replace(/@\w*$/, `@${username} `);
+        const after = input.value.substring(input.selectionStart);
+        input.value = before + after;
         input.focus();
-        input.selectionStart = input.selectionEnd = newBefore.length;
+        input.selectionStart = input.selectionEnd = before.length;
         document.getElementById('mentionDropdown').style.display = 'none';
     };
 
-    function formatMentions(text) {
-        return text.replace(/@(\w+)/g, '<span class="mention-tag">@$1</span>');
-    }
-
-    // ══════════════════════════════════════════════════════════
-    // CSV IMPORT INTO CARD
-    // ══════════════════════════════════════════════════════════
-
-    window.importCsvToCard = async function () {
-        if (!activeCardId) return;
-        const csvText = document.getElementById('modalCsvInput').value.trim();
-        const status = document.getElementById('csvStatus');
-        if (!csvText) {
-            status.textContent = '⚠️ Cole o CSV primeiro';
-            return;
-        }
-
-        const lines = csvText.split('\n').filter(l => l.trim());
-        const items = [];
-
-        for (const line of lines) {
-            const parts = line.split(';').map(p => p.trim());
-            if (parts.length >= 3) {
-                items.push({
-                    descricao: parts[0],
-                    quantidade: parts[1],
-                    valor_compra: parts[2],
-                });
-            }
-        }
-
-        if (items.length === 0) {
-            status.textContent = '⚠️ Nenhum item válido encontrado';
-            return;
-        }
-
-        status.textContent = `✅ ${items.length} itens prontos. Abra "Editar Orçamento" para adicionar.`;
-        const existingDesc = document.getElementById('modalDescription').value || '';
-        const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.descricao} | Qtd: ${it.quantidade} | R$ ${it.valor_compra}`).join('\n')}`;
-        document.getElementById('modalDescription').value = existingDesc + csvNote;
-        document.getElementById('btnSaveDesc').style.display = 'inline-flex';
-        document.getElementById('modalCsvInput').value = '';
-    };
+    function formatMentions(text) { return text.replace(/@(\w+)/g, '<span class="mention-tag">@$1</span>'); }
 
     // ══════════════════════════════════════════════════════════
     // FILTERS
@@ -865,10 +915,7 @@
 
     function getUrgencyClass(deadline) {
         if (!deadline) return '';
-        const now = new Date();
-        const dl = new Date(deadline);
-        const hours = (dl - now) / (1000 * 60 * 60);
-
+        const hours = (new Date(deadline) - new Date()) / (1000 * 60 * 60);
         if (hours < 0) return 'urgency-overdue';
         if (hours < 6) return 'urgency-critical';
         if (hours < 24) return 'urgency-warning';
@@ -877,14 +924,11 @@
     }
 
     function formatDeadline(deadline) {
-        const dl = new Date(deadline);
-        const now = new Date();
-        const diff = dl - now;
-
+        const diff = new Date(deadline) - new Date();
         if (diff < 0) return 'Atrasado';
-        if (diff < 1000 * 60 * 60) return `${Math.round(diff / (1000 * 60))}min`;
-        if (diff < 1000 * 60 * 60 * 24) return `${Math.round(diff / (1000 * 60 * 60))}h`;
-        return dl.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        if (diff < 3600000) return `${Math.round(diff / 60000)}min`;
+        if (diff < 86400000) return `${Math.round(diff / 3600000)}h`;
+        return new Date(deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
     }
 
     function escapeHtml(str) {
@@ -893,11 +937,5 @@
         return str.replace(/[&<>"']/g, c => map[c]);
     }
 
-    function debounce(fn, ms) {
-        let t;
-        return (...args) => {
-            clearTimeout(t);
-            t = setTimeout(() => fn(...args), ms);
-        };
-    }
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 })();

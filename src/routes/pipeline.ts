@@ -17,12 +17,11 @@ function broadcastSSE(event: string, data: any) {
 }
 
 // ── Constants ──
-const STAGES = ['inbox', 'separada', 'cotacao', 'revisao', 'enviados'] as const;
+const STAGES = ['inbox', 'cotacao', 'revisao', 'enviados'] as const;
 type Stage = typeof STAGES[number];
 
 const STAGE_META: Record<Stage, { label: string; icon: string }> = {
     inbox: { label: 'Inbox', icon: '📩' },
-    separada: { label: 'Separada', icon: '🔒' },
     cotacao: { label: 'Em Cotação', icon: '⚡' },
     revisao: { label: 'Revisão', icon: '🔍' },
     enviados: { label: 'Enviados', icon: '✅' },
@@ -140,6 +139,62 @@ pipelineRouter.get('/api/pipeline/cards', async (req: Request, res: Response) =>
     } catch (e) {
         console.error('Pipeline cards error:', e);
         res.status(500).json({ error: 'Failed to load cards' });
+    }
+});
+
+// ── POST /api/pipeline/cards — Create a new card from the New Cotação modal ──
+pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) => {
+    try {
+        const { titulo, solicitante_nome, description, assigned_to, deadline, label_ids } = req.body;
+        if (!titulo || !titulo.trim()) {
+            return res.status(400).json({ error: 'Título é obrigatório' });
+        }
+
+        // Get max position in inbox
+        const [maxPos] = await db.select({ max: sql<number>`COALESCE(MAX(position), -1)` })
+            .from(orcamentos)
+            .where(and(eq(orcamentos.stage, 'inbox'), isNull(orcamentos.deleted_at)));
+
+        const result = await db.insert(orcamentos).values({
+            titulo: titulo.trim(),
+            solicitante_nome: solicitante_nome?.trim() || null,
+            description: description?.trim() || null,
+            assigned_to: assigned_to ? Number(assigned_to) : null,
+            deadline: deadline || null,
+            stage: 'inbox',
+            position: Number(maxPos.max) + 1,
+        } as any);
+
+        const newId = (result as any)[0]?.insertId;
+
+        // Attach labels
+        if (Array.isArray(label_ids) && label_ids.length > 0) {
+            for (const labelId of label_ids) {
+                await db.insert(orcamento_labels).values({
+                    orcamento_id: newId,
+                    label_id: Number(labelId),
+                } as any);
+            }
+        }
+
+        // Audit
+        const user = (req as any).session?.user;
+        if (user) {
+            await logAudit({
+                userId: user.id,
+                username: user.username,
+                action: 'pipeline_card_created' as any,
+                entity: 'orcamentos',
+                entityId: newId,
+                details: titulo.trim(),
+            });
+        }
+
+        broadcastSSE('card_updated', { cardId: newId });
+        res.json({ success: true, id: newId });
+    } catch (e) {
+        console.error('Create card error:', e);
+        res.status(500).json({ error: 'Failed to create card' });
     }
 });
 
