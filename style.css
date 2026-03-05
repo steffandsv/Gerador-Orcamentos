@@ -2151,6 +2151,30 @@ tbody tr:hover {
 
 .card-tab-content { padding-top: 4px; }
 
+/* ── Description Tab — Markdown flush with scroll ── */
+#tabDesc .modal-section {
+    margin-bottom: 0;
+}
+
+#tabDesc .section-header {
+    position: sticky;
+    top: 0;
+    background: var(--white);
+    z-index: 1;
+    padding-bottom: 8px;
+}
+
+.md-preview {
+    overflow: visible;
+    max-height: none;
+}
+
+.md-content {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow-x: auto;
+}
+
 /* ── Stats Grid ── */
 .stats-grid {
     display: grid;
