@@ -1078,7 +1078,7 @@ tbody tr:hover {
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     width: 100%;
-    max-width: 800px;
+    max-width: 960px;
     animation: modalSlideIn 0.25s ease-out;
     overflow: hidden;
 }
@@ -1131,7 +1131,9 @@ tbody tr:hover {
     flex: 1;
     padding: 20px 24px;
     overflow-y: auto;
+    overflow-x: hidden;
     max-height: 70vh;
+    min-width: 0;
 }
 
 .card-modal-sidebar {
@@ -2105,6 +2107,37 @@ tbody tr:hover {
     opacity: 0.85;
 }
 
+/* ── New Card Import Button ── */
+.btn-import-items {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border: 2px dashed #cbd5e1;
+    background: #f8fafc;
+    color: #64748b;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-import-items:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(59, 130, 246, 0.04);
+}
+
+.btn-import-items.btn-import-done {
+    border-color: #22c55e;
+    background: #f0fdf4;
+    color: #16a34a;
+    border-style: solid;
+}
+
 /* ── Enviados Drop Zone ── */
 .enviados-drop-zone {
     display: flex;
@@ -2130,6 +2163,8 @@ tbody tr:hover {
     border-collapse: collapse;
     margin: 12px 0;
     font-size: 0.82rem;
+    display: block;
+    overflow-x: auto;
 }
 
 .md-content th,

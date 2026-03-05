@@ -647,12 +647,16 @@
     // NEW CARD MODAL
     // ══════════════════════════════════════════════════════════
 
+    let newCardImportedItems = [];
+
     window.openNewCardModal = function () {
         newCardSelectedLabels = [];
         newCardDeliveryType = '';
+        newCardImportedItems = [];
         document.getElementById('newCardModal').style.display = 'flex';
         document.getElementById('newCardTitle').value = '';
         document.getElementById('newCardSolicitante').value = '';
+        document.getElementById('newCardCnpj').value = '';
         document.getElementById('newCardDescription').value = '';
         document.getElementById('newCardAssignee').value = '';
         document.getElementById('newCardDeadline').value = '';
@@ -660,6 +664,8 @@
         document.getElementById('newCardDeliveryTarget').value = '';
         document.getElementById('newCardDeliveryTarget').style.display = 'none';
         document.getElementById('newCardDeliveryToggle').querySelectorAll('.delivery-opt').forEach(b => b.classList.remove('active'));
+        document.getElementById('newCardImportLabel').textContent = 'Importar Itens (CSV)';
+        document.getElementById('newCardImportBtn').classList.remove('btn-import-done');
         renderNewCardLabels();
         setTimeout(() => document.getElementById('newCardTitle').focus(), 100);
     };
@@ -730,12 +736,14 @@
         const payload = {
             titulo,
             solicitante_nome: document.getElementById('newCardSolicitante').value.trim(),
+            solicitante_cnpj: document.getElementById('newCardCnpj').value.trim(),
             description: document.getElementById('newCardDescription').value.trim(),
             assigned_to: document.getElementById('newCardAssignee').value || null,
             deadline: document.getElementById('newCardDeadline').value || null,
             label_ids: newCardSelectedLabels.map(l => l.id),
             delivery_type: newCardDeliveryType || null,
             delivery_target: document.getElementById('newCardDeliveryTarget').value.trim() || null,
+            imported_items: newCardImportedItems.length > 0 ? newCardImportedItems : undefined,
         };
 
         try {
@@ -756,10 +764,19 @@
     };
 
     // ══════════════════════════════════════════════════════════
-    // CSV IMPORT OVERLAY
+    // CSV IMPORT — works for both existing card and new card
     // ══════════════════════════════════════════════════════════
+    let csvImportContext = 'card'; // 'card' or 'newCard'
 
     window.openCsvImportOverlay = function () {
+        csvImportContext = 'card';
+        document.getElementById('csvOverlay').style.display = 'flex';
+        document.getElementById('csvOverlayInput').value = '';
+        document.getElementById('csvOverlayStatus').textContent = '';
+    };
+
+    window.openNewCardCsvImport = function () {
+        csvImportContext = 'newCard';
         document.getElementById('csvOverlay').style.display = 'flex';
         document.getElementById('csvOverlayInput').value = '';
         document.getElementById('csvOverlayStatus').textContent = '';
@@ -770,7 +787,6 @@
     };
 
     window.importCsvFromOverlay = async function () {
-        if (!activeCardId) return;
         const csvText = document.getElementById('csvOverlayInput').value.trim();
         const status = document.getElementById('csvOverlayStatus');
         if (!csvText) { status.textContent = '⚠️ Cole o CSV primeiro'; return; }
@@ -784,7 +800,20 @@
         }
         if (items.length === 0) { status.textContent = '⚠️ Nenhum item válido'; return; }
 
-        // Append to description and auto-save
+        if (csvImportContext === 'newCard') {
+            // Store items for submit, update button label
+            newCardImportedItems = items;
+            const btn = document.getElementById('newCardImportBtn');
+            const label = document.getElementById('newCardImportLabel');
+            label.textContent = `${items.length} itens importados`;
+            btn.classList.add('btn-import-done');
+            status.textContent = `✅ ${items.length} itens prontos.`;
+            setTimeout(() => closeCsvOverlay(), 1000);
+            return;
+        }
+
+        // Existing card — append to description
+        if (!activeCardId) return;
         const existingDesc = document.getElementById('modalDescription').value || '';
         const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.codigo ? `[${it.codigo}] ` : ''}${it.descricao} | Qtd: ${it.quantidade} | R$ ${it.valor_compra}`).join('\n')}`;
         document.getElementById('modalDescription').value = existingDesc + csvNote;

@@ -261,9 +261,15 @@
                 <label class="sidebar-label"><i class="fas fa-heading"></i> Título *</label>
                 <input type="text" id="newCardTitle" class="sidebar-input" placeholder="Ex: Pregão 042/2026 — Material de Limpeza" autofocus>
             </div>
-            <div class="modal-section">
-                <label class="sidebar-label"><i class="fas fa-user-tie"></i> Solicitante</label>
-                <input type="text" id="newCardSolicitante" class="sidebar-input" placeholder="Nome do solicitante ou órgão">
+            <div class="modal-section" style="display:flex; gap:16px;">
+                <div style="flex:1;">
+                    <label class="sidebar-label"><i class="fas fa-user-tie"></i> Solicitante</label>
+                    <input type="text" id="newCardSolicitante" class="sidebar-input" placeholder="Nome do solicitante ou órgão">
+                </div>
+                <div style="flex:1;">
+                    <label class="sidebar-label"><i class="fas fa-id-card"></i> CNPJ</label>
+                    <input type="text" id="newCardCnpj" class="sidebar-input" placeholder="00.000.000/0000-00">
+                </div>
             </div>
             <div class="modal-section">
                 <label class="sidebar-label"><i class="fas fa-align-left"></i> Descrição</label>
@@ -299,6 +305,12 @@
                     placeholder="Email ou URL do sistema..." style="margin-top:6px;display:none;">
             </div>
             <div class="modal-section">
+                <label class="sidebar-label"><i class="fas fa-file-csv"></i> Itens</label>
+                <button class="btn-pipeline btn-import-items" id="newCardImportBtn" onclick="openNewCardCsvImport()">
+                    <i class="fas fa-upload"></i> <span id="newCardImportLabel">Importar Itens (CSV)</span>
+                </button>
+            </div>
+            <div class="modal-section">
                 <label class="sidebar-label"><i class="fas fa-tags"></i> Etiquetas</label>
                 <div id="newCardLabels" class="modal-labels-list" style="margin-bottom:6px;"></div>
                 <div class="label-inline-add">
@@ -327,7 +339,7 @@
             <button class="card-modal-close" onclick="closeCsvOverlay()"><i class="fas fa-times"></i></button>
         </div>
         <div class="card-modal-body" style="flex-direction:column; padding:20px 24px;">
-            <p style="font-size:0.85rem; color:#64748b; margin:0 0 12px;">Cole os dados CSV abaixo. Formato: <code>Descrição;Quantidade;Valor</code> (uma linha por item).</p>
+            <p style="font-size:0.85rem; color:#64748b; margin:0 0 12px;">Cole os dados CSV abaixo. Formato: <code>Código;Descrição;Quantidade;Valor</code> (uma linha por item).</p>
             <textarea id="csvOverlayInput" class="modal-textarea" rows="8"
                 placeholder="Material de Limpeza;100;5.50&#10;Papel A4;50;22.90&#10;..."></textarea>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">

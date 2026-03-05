@@ -148,7 +148,7 @@ pipelineRouter.get('/api/pipeline/cards', async (req: Request, res: Response) =>
 // ── POST /api/pipeline/cards — Create a new card from the New Cotação modal ──
 pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) => {
     try {
-        const { titulo, solicitante_nome, description, assigned_to, deadline, label_ids, delivery_type, delivery_target, links } = req.body;
+        const { titulo, solicitante_nome, solicitante_cnpj, description, assigned_to, deadline, label_ids, delivery_type, delivery_target, links, imported_items } = req.body;
         if (!titulo || !titulo.trim()) {
             return res.status(400).json({ error: 'Título é obrigatório' });
         }
@@ -161,6 +161,7 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
         const result = await db.insert(orcamentos).values({
             titulo: titulo.trim(),
             solicitante_nome: solicitante_nome?.trim() || null,
+            solicitante_cnpj: solicitante_cnpj?.trim() || null,
             description: description?.trim() || null,
             assigned_to: assigned_to ? Number(assigned_to) : null,
             deadline: deadline ? new Date(deadline) : null,
@@ -179,6 +180,19 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
                 await db.insert(orcamento_labels).values({
                     orcamento_id: newId,
                     label_id: Number(labelId),
+                } as any);
+            }
+        }
+
+        // Insert imported items
+        if (Array.isArray(imported_items) && imported_items.length > 0) {
+            for (const item of imported_items) {
+                await db.insert(itens_orcamento).values({
+                    orcamento_id: newId,
+                    codigo: item.codigo ? Number(item.codigo) || null : null,
+                    descricao: item.descricao || 'Item sem descrição',
+                    quantidade: Number(item.quantidade) || 1,
+                    valor_compra: Number(item.valor_compra) || 0,
                 } as any);
             }
         }
