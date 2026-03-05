@@ -5,11 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar Orçamento</title>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>body { padding: 20px; background: var(--white); } .app-header, .sidebar, .mobile-nav { display: none !important; }</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="/style.css?v=<%= Date.now() %>">
+    <script src="/js/script.js?v=<%= Date.now() %>" defer></script>
+    <script src="/js/autocomplete.js?v=<%= Date.now() %>" defer></script>
+    <style>body { padding: 20px; background: var(--white); } .main-header, .main-footer, .sidebar, .mobile-nav { display: none !important; } main.container { padding: 0; max-width: 100%; }</style>
 </head>
 <body>
+<main class="container">
 <% } else { %>
 <%- include('layout_header') %>
 <% } %>
@@ -304,6 +312,7 @@
     });
 </script>
 <% if (typeof embed !== 'undefined' && embed) { %>
+</main>
 </body>
 </html>
 <% } else { %>

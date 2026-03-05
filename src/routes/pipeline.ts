@@ -192,7 +192,8 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
                     codigo: item.codigo ? Number(item.codigo) || null : null,
                     descricao: item.descricao || 'Item sem descrição',
                     quantidade: Number(item.quantidade) || 1,
-                    valor_compra: Number(item.valor_compra) || 0,
+                    valor_compra: 0,
+                    valor_venda: Number(item.valor_venda) || 0,
                 } as any);
             }
         }
