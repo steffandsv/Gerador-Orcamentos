@@ -112,7 +112,11 @@
                     if (filterLabel && !c.labels.some(l => String(l.id) === filterLabel)) return false;
                     return true;
                 })
-                .sort((a, b) => a.position - b.position);
+                .sort((a, b) => {
+                    const aTime = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+                    const bTime = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+                    return aTime - bTime;
+                });
 
             body.innerHTML = stageCards.map(c => renderCard(c)).join('');
             const countEl = document.getElementById(`count-${stage}`);
@@ -401,10 +405,59 @@
         loadComments(cardId);
     };
 
+
+    // ── Card Tabs ──
+    window.switchCardTab = function (tab) {
+        document.querySelectorAll('.card-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+        document.querySelectorAll('.card-tab-content').forEach(c => {
+            c.style.display = 'none';
+            c.classList.remove('active');
+        });
+        const tabEl = document.getElementById(tab === 'desc' ? 'tabDesc' : tab === 'stats' ? 'tabStats' : 'tabComments');
+        if (tabEl) { tabEl.style.display = 'block'; tabEl.classList.add('active'); }
+        if (tab === 'stats' && activeCardId) loadCardStats(activeCardId);
+    };
+
+    async function loadCardStats(cardId) {
+        try {
+            const res = await fetch(`/api/pipeline/cards/${cardId}/stats`);
+            const data = await res.json();
+            const fmt = (v) => v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—';
+            document.getElementById('statItemCount').textContent = data.item_count || '0';
+            document.getElementById('statTotalCompra').textContent = fmt(data.total_compra);
+            document.getElementById('statTotalVenda').textContent = fmt(data.total_venda);
+            document.getElementById('statLucro').textContent = fmt(data.lucro);
+            document.getElementById('statLucroPercent').textContent = data.lucro_percent != null ? `${data.lucro_percent.toFixed(1)}%` : '—';
+            document.getElementById('statComissao').textContent = fmt(data.comissao);
+            document.getElementById('statsNote').style.display = (data.item_count > 0) ? 'none' : 'block';
+            document.getElementById('cardStatsGrid').style.display = (data.item_count > 0) ? 'grid' : 'none';
+        } catch (e) {
+            console.error('Failed to load stats:', e);
+        }
+    }
+
+    // ── Quote Editor Overlay ──
+    window.openQuoteEditor = function () {
+        if (!activeCardId) return;
+        const overlay = document.getElementById('quoteEditorOverlay');
+        const iframe = document.getElementById('quoteEditorIframe');
+        iframe.src = `/orcamentos/form?id=${activeCardId}`;
+        overlay.style.display = 'flex';
+    };
+
+    window.closeQuoteEditor = function () {
+        const overlay = document.getElementById('quoteEditorOverlay');
+        const iframe = document.getElementById('quoteEditorIframe');
+        overlay.style.display = 'none';
+        iframe.src = '';
+        if (activeCardId) loadCardStats(activeCardId);
+    };
+
     window.closeCardModal = function () {
         document.getElementById('cardModal').style.display = 'none';
         activeCardId = null;
         activeCardStage = null;
+        switchCardTab('desc');
     };
 
     document.addEventListener('click', (e) => {
@@ -1160,11 +1213,20 @@
     }
 
     function formatDeadline(deadline) {
-        const diff = new Date(deadline) - new Date();
-        if (diff < 0) return 'Atrasado';
-        if (diff < 3600000) return `${Math.round(diff / 60000)}min`;
-        if (diff < 86400000) return `${Math.round(diff / 3600000)}h`;
-        return new Date(deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        const diff = new Date(deadline) - Date.now();
+        const absDiff = Math.abs(diff);
+        const hours = Math.round(absDiff / 3600000);
+        const days = Math.round(absDiff / 86400000);
+
+        if (diff < 0) {
+            if (hours < 1) return 'Agora';
+            if (hours < 24) return `Atrasado ${hours}h`;
+            return `Atrasado ${days}d`;
+        }
+        if (hours < 1) return `${Math.round(absDiff / 60000)}min`;
+        if (hours < 24) return `Daqui ${hours}h`;
+        if (days <= 30) return `Daqui ${days}d`;
+        return `Daqui ${days}d`;
     }
 
     function escapeHtml(str) {

@@ -118,43 +118,88 @@
         </div>
         <div class="card-modal-body">
             <div class="card-modal-main">
-                <!-- Description — Preview-first Markdown -->
-                <div class="modal-section">
-                    <div class="section-header">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <i class="fas fa-align-left"></i> <span>Descrição</span>
-                            <span class="desc-save-status" id="descSaveStatus"></span>
+                <!-- Tab Navigation -->
+                <div class="card-tabs">
+                    <button class="card-tab active" data-tab="desc" onclick="switchCardTab('desc')">
+                        <i class="fas fa-align-left"></i> Descrição
+                    </button>
+                    <button class="card-tab" data-tab="stats" onclick="switchCardTab('stats')">
+                        <i class="fas fa-chart-bar"></i> Estatísticas
+                    </button>
+                    <button class="card-tab" data-tab="comments" onclick="switchCardTab('comments')">
+                        <i class="fas fa-comments"></i> Comentários <span id="commentCountBadge" class="tab-badge" style="display:none;"></span>
+                    </button>
+                </div>
+
+                <!-- Tab: Descrição -->
+                <div class="card-tab-content active" id="tabDesc">
+                    <div class="modal-section">
+                        <div class="section-header">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span class="desc-save-status" id="descSaveStatus"></span>
+                            </div>
+                            <button class="desc-edit-btn" id="btnEditDesc" onclick="setDescTab('write')" title="Editar descrição">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
                         </div>
-                        <button class="desc-edit-btn" id="btnEditDesc" onclick="setDescTab('write')" title="Editar descrição">
-                            <i class="fas fa-pencil-alt"></i>
-                        </button>
-                    </div>
-                    <div id="descWritePane" style="display:none;">
-                        <textarea id="modalDescription" class="modal-textarea"
-                            placeholder="Adicione uma descrição detalhada (aceita Markdown)..."
-                            oninput="onDescriptionInput()"></textarea>
-                        <button class="desc-done-btn" onclick="setDescTab('preview')">
-                            <i class="fas fa-check"></i> Concluído
-                        </button>
-                    </div>
-                    <div id="descPreviewPane" class="md-preview">
-                        <div id="descPreviewContent" class="md-content"></div>
+                        <div id="descWritePane" style="display:none;">
+                            <textarea id="modalDescription" class="modal-textarea"
+                                placeholder="Adicione uma descrição detalhada (aceita Markdown)..."
+                                oninput="onDescriptionInput()"></textarea>
+                            <button class="desc-done-btn" onclick="setDescTab('preview')">
+                                <i class="fas fa-check"></i> Concluído
+                            </button>
+                        </div>
+                        <div id="descPreviewPane" class="md-preview">
+                            <div id="descPreviewContent" class="md-content"></div>
+                        </div>
                     </div>
                 </div>
-                <!-- Comments -->
-                <div class="modal-section">
-                    <div class="section-header">
-                        <i class="fas fa-comments"></i> <span>Comentários</span>
+
+                <!-- Tab: Estatísticas -->
+                <div class="card-tab-content" id="tabStats" style="display:none;">
+                    <div class="stats-grid" id="cardStatsGrid">
+                        <div class="stat-card">
+                            <div class="stat-label">Itens</div>
+                            <div class="stat-value" id="statItemCount">—</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Compra</div>
+                            <div class="stat-value stat-money" id="statTotalCompra">—</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Venda</div>
+                            <div class="stat-value stat-money" id="statTotalVenda">—</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Lucro Projetado</div>
+                            <div class="stat-value stat-profit" id="statLucro">—</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">% Lucro</div>
+                            <div class="stat-value" id="statLucroPercent">—</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Comissão Projetada</div>
+                            <div class="stat-value stat-commission" id="statComissao">—</div>
+                        </div>
                     </div>
-                    <div id="commentsList" class="comments-list"></div>
-                    <div class="comment-composer">
-                        <textarea id="commentInput" class="comment-input"
-                            placeholder="Escreva um comentário... Use @nome para mencionar alguém"
-                            rows="2" onkeydown="handleCommentKey(event)"></textarea>
-                        <div class="mention-dropdown" id="mentionDropdown" style="display:none;"></div>
-                        <button class="btn-pipeline btn-sm" onclick="submitComment()">
-                            <i class="fas fa-paper-plane"></i> Enviar
-                        </button>
+                    <p class="stats-note" id="statsNote" style="display:none;"><i class="fas fa-info-circle"></i> Adicione itens ao orçamento para ver as estatísticas.</p>
+                </div>
+
+                <!-- Tab: Comentários -->
+                <div class="card-tab-content" id="tabComments" style="display:none;">
+                    <div class="modal-section">
+                        <div id="commentsList" class="comments-list"></div>
+                        <div class="comment-composer">
+                            <textarea id="commentInput" class="comment-input"
+                                placeholder="Escreva um comentário... Use @nome para mencionar alguém"
+                                rows="2" onkeydown="handleCommentKey(event)"></textarea>
+                            <div class="mention-dropdown" id="mentionDropdown" style="display:none;"></div>
+                            <button class="btn-pipeline btn-sm" onclick="submitComment()">
+                                <i class="fas fa-paper-plane"></i> Enviar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -234,7 +279,7 @@
                     <a id="btnSendAction" href="#" class="sidebar-action" onclick="handleSendAction(); return false;" style="display:none;">
                         <i class="fas fa-paper-plane" id="sendActionIcon"></i> <span id="sendActionText">Enviar</span>
                     </a>
-                    <a id="btnEditQuote" href="#" class="sidebar-action" target="_blank">
+                    <a id="btnEditQuote" href="#" class="sidebar-action" onclick="openQuoteEditor(); return false;">
                         <i class="fas fa-edit"></i> Editar Orçamento
                     </a>
                     <a href="#" class="sidebar-action" onclick="openCsvImportOverlay(); return false;">
@@ -247,6 +292,15 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- ═══════════ QUOTE EDITOR OVERLAY ═══════════ -->
+<div class="editor-overlay" id="quoteEditorOverlay" style="display:none;">
+    <div class="editor-overlay-header">
+        <h3><i class="fas fa-edit"></i> Editar Orçamento</h3>
+        <button class="card-modal-close" onclick="closeQuoteEditor()"><i class="fas fa-times"></i></button>
+    </div>
+    <iframe id="quoteEditorIframe" class="editor-overlay-iframe"></iframe>
 </div>
 
 <!-- ═══════════ NEW CARD MODAL ═══════════ -->

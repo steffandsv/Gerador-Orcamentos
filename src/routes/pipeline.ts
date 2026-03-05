@@ -218,6 +218,58 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
     }
 });
 
+// ── GET /api/pipeline/cards/:id/stats — Stats for the card's Statistics tab ──
+pipelineRouter.get('/api/pipeline/cards/:id/stats', async (req: Request, res: Response) => {
+    try {
+        const cardId = Number(req.params.id);
+
+        // Get the orcamento variacao_maxima for fallback pricing
+        const [orc] = await db.select({ variacao_maxima: orcamentos.variacao_maxima })
+            .from(orcamentos)
+            .where(eq(orcamentos.id, cardId));
+
+        const markup = orc?.variacao_maxima ? Number(orc.variacao_maxima) : 0;
+
+        // Get all items
+        const items = await db.select()
+            .from(itens_orcamento)
+            .where(eq(itens_orcamento.orcamento_id, cardId));
+
+        const itemCount = items.length;
+
+        if (itemCount === 0) {
+            return res.json({ item_count: 0, total_compra: null, total_venda: null, lucro: null, lucro_percent: null, comissao: null });
+        }
+
+        let totalCompra = 0;
+        let totalVenda = 0;
+
+        for (const item of items) {
+            const qty = Number(item.quantidade) || 0;
+            const compra = Number(item.valor_compra) || 0;
+            const venda = item.valor_venda ? Number(item.valor_venda) : compra * (1 + markup / 100);
+            totalCompra += qty * compra;
+            totalVenda += qty * venda;
+        }
+
+        const lucro = totalVenda - totalCompra;
+        const lucroPercent = totalCompra > 0 ? (lucro / totalCompra) * 100 : 0;
+        const comissao = lucro * 0.1; // 10% commission default
+
+        res.json({
+            item_count: itemCount,
+            total_compra: totalCompra,
+            total_venda: totalVenda,
+            lucro,
+            lucro_percent: lucroPercent,
+            comissao,
+        });
+    } catch (e) {
+        console.error('Card stats error:', e);
+        res.status(500).json({ error: 'Failed to load stats' });
+    }
+});
+
 // ── GET /api/pipeline/stream — SSE ──
 pipelineRouter.get('/api/pipeline/stream', (req: Request, res: Response) => {
     res.writeHead(200, {
