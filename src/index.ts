@@ -73,6 +73,16 @@ app.get('/', async (req, res) => {
     res.redirect('/pipeline');
 });
 
+// Global error handler — always verbose (even in production, per user request)
+app.use((err: any, _req: any, res: any, _next: any) => {
+    console.error('Unhandled error:', err);
+    res.status(err.status || 500).json({
+        error: err.message || 'Internal Server Error',
+        stack: err.stack,
+        details: err.details || null,
+    });
+});
+
 // Start Server
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);

@@ -17,6 +17,7 @@
     let activeCardStage = null;
     let draggedCardId = null;
     let newCardSelectedLabels = [];
+    let descSaveTimer = null;
 
     // Enviados table state
     let enviadosState = { page: 1, sortBy: 'updated_at', sortDir: 'desc', search: '', outcome: '', assignee: '' };
@@ -368,7 +369,9 @@
         document.getElementById('cardModal').style.display = 'flex';
         document.getElementById('modalTitle').textContent = card.titulo;
         document.getElementById('modalDescription').value = card.description || '';
-        document.getElementById('btnSaveDesc').style.display = 'none';
+        document.getElementById('descSaveStatus').textContent = '';
+        // Reset to write tab
+        setDescTab('write');
         document.getElementById('modalAssignee').value = card.assigned_to || '';
         document.getElementById('modalDeadline').value = card.deadline ? new Date(card.deadline).toISOString().slice(0, 16) : '';
 
@@ -400,17 +403,96 @@
         if (e.target.id === 'csvOverlay') closeCsvOverlay();
     });
 
-    window.saveDescription = async function () {
+    // ── Description auto-save + markdown preview ──
+
+    window.onDescriptionInput = function () {
+        const status = document.getElementById('descSaveStatus');
+        status.textContent = '...';
+        status.className = 'desc-save-status saving';
+        if (descSaveTimer) clearTimeout(descSaveTimer);
+        descSaveTimer = setTimeout(() => autoSaveDescription(), 800);
+    };
+
+    async function autoSaveDescription() {
         if (!activeCardId) return;
         const desc = document.getElementById('modalDescription').value;
-        await fetch(`/api/pipeline/cards/${activeCardId}`, {
-            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ description: desc }),
-        });
-        document.getElementById('btnSaveDesc').style.display = 'none';
-        const card = allCards.find(c => c.id === activeCardId);
-        if (card) card.description = desc;
+        const status = document.getElementById('descSaveStatus');
+        try {
+            status.textContent = 'Salvando...';
+            await fetch(`/api/pipeline/cards/${activeCardId}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: desc }),
+            });
+            const card = allCards.find(c => c.id === activeCardId);
+            if (card) card.description = desc;
+            status.textContent = 'Salvo ✓';
+            status.className = 'desc-save-status saved';
+            setTimeout(() => { if (status.textContent === 'Salvo ✓') status.textContent = ''; }, 2000);
+        } catch (e) {
+            status.textContent = '❌ Erro';
+            status.className = 'desc-save-status error';
+            console.error('Auto-save failed:', e);
+        }
+    }
+
+    window.setDescTab = function (tab) {
+        const writePane = document.getElementById('descWritePane');
+        const previewPane = document.getElementById('descPreviewPane');
+        const tabWrite = document.getElementById('tabWrite');
+        const tabPreview = document.getElementById('tabPreview');
+        if (tab === 'write') {
+            writePane.style.display = 'block';
+            previewPane.style.display = 'none';
+            tabWrite.classList.add('active');
+            tabPreview.classList.remove('active');
+        } else {
+            const md = document.getElementById('modalDescription').value;
+            document.getElementById('descPreviewContent').innerHTML = renderMarkdown(md);
+            writePane.style.display = 'none';
+            previewPane.style.display = 'block';
+            tabWrite.classList.remove('active');
+            tabPreview.classList.add('active');
+        }
     };
+
+    function renderMarkdown(text) {
+        if (!text) return '<p style="color:#94a3b8;font-style:italic;">Sem descrição.</p>';
+        let html = escapeHtml(text);
+        // Headings
+        html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+        html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+        // Bold + Italic
+        html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        // Code blocks
+        html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // Horizontal rule
+        html = html.replace(/^---$/gm, '<hr>');
+        // Unordered list
+        html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+        // Ordered list
+        html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+        // Links
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        // Line breaks → paragraphs
+        html = html.replace(/\n\n/g, '</p><p>');
+        html = html.replace(/\n/g, '<br>');
+        html = '<p>' + html + '</p>';
+        // Clean empty paragraphs
+        html = html.replace(/<p><\/p>/g, '');
+        html = html.replace(/<p>(<h[2-4]>)/g, '$1');
+        html = html.replace(/(<\/h[2-4]>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<ul>)/g, '$1');
+        html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<pre>)/g, '$1');
+        html = html.replace(/(<\/pre>)<\/p>/g, '$1');
+        return html;
+    }
 
     window.assignUser = async function () {
         if (!activeCardId) return;
@@ -577,11 +659,11 @@
         }
         if (items.length === 0) { status.textContent = '⚠️ Nenhum item válido'; return; }
 
-        // Append to description
+        // Append to description and auto-save
         const existingDesc = document.getElementById('modalDescription').value || '';
         const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.descricao} | Qtd: ${it.quantidade} | R$ ${it.valor_compra}`).join('\n')}`;
         document.getElementById('modalDescription').value = existingDesc + csvNote;
-        document.getElementById('btnSaveDesc').style.display = 'inline-flex';
+        autoSaveDescription();
 
         status.textContent = `✅ ${items.length} itens adicionados à descrição.`;
         setTimeout(() => closeCsvOverlay(), 1500);

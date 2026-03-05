@@ -160,7 +160,7 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
             solicitante_nome: solicitante_nome?.trim() || null,
             description: description?.trim() || null,
             assigned_to: assigned_to ? Number(assigned_to) : null,
-            deadline: deadline || null,
+            deadline: deadline ? new Date(deadline) : null,
             stage: 'inbox',
             position: Number(maxPos.max) + 1,
         } as any);
@@ -192,9 +192,9 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
 
         broadcastSSE('card_updated', { cardId: newId });
         res.json({ success: true, id: newId });
-    } catch (e) {
+    } catch (e: any) {
         console.error('Create card error:', e);
-        res.status(500).json({ error: 'Failed to create card' });
+        res.status(500).json({ error: 'Failed to create card', details: e?.message, stack: e?.stack });
     }
 });
 
