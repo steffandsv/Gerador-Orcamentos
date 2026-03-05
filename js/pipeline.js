@@ -138,6 +138,7 @@
         let outcomeHtml = '';
         if (card.outcome === 'won') outcomeHtml = '<span class="outcome-indicator">🏆</span>';
         else if (card.outcome === 'lost') outcomeHtml = '<span class="outcome-indicator">❌</span>';
+        else if (card.outcome === 'help') outcomeHtml = '<span class="outcome-indicator">🤝</span>';
 
         const metaHtml = [];
         if (card.item_count > 0) metaHtml.push(`<span class="card-meta-item"><i class="fas fa-list"></i> ${card.item_count}</span>`);
@@ -182,6 +183,7 @@
             let outcomeBadge = '<span class="outcome-badge outcome-badge-pending">⏳ Aguardando</span>';
             if (r.outcome === 'won') outcomeBadge = '<span class="outcome-badge outcome-badge-won">🏆 Vencemos</span>';
             if (r.outcome === 'lost') outcomeBadge = '<span class="outcome-badge outcome-badge-lost">❌ Perdemos</span>';
+            if (r.outcome === 'help') outcomeBadge = '<span class="outcome-badge outcome-badge-help">🤝 Para Ajudar</span>';
 
             return `
             <tr class="enviados-row" onclick="openCardModal(${r.id})" data-id="${r.id}">
@@ -375,15 +377,24 @@
         document.getElementById('modalAssignee').value = card.assigned_to || '';
         document.getElementById('modalDeadline').value = card.deadline ? new Date(card.deadline).toISOString().slice(0, 16) : '';
 
+        // Outcome — dropdown
         const outcomeSection = document.getElementById('outcomeSection');
         if (card.stage === 'enviados') {
             outcomeSection.style.display = 'block';
-            document.querySelectorAll('.outcome-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.outcome === (card.outcome || ''));
-            });
+            document.getElementById('modalOutcome').value = card.outcome || '';
         } else {
             outcomeSection.style.display = 'none';
         }
+
+        // Delivery method
+        initDeliveryUI(card.delivery_type || '', card.delivery_target || '', 'deliveryToggle', 'modalDeliveryTarget');
+
+        // Links
+        activeCardLinks = Array.isArray(card.links) ? [...card.links] : (typeof card.links === 'string' ? JSON.parse(card.links || '[]') : []);
+        renderLinks();
+
+        // Send action button
+        updateSendActionButton(card.delivery_type, card.delivery_target);
 
         document.getElementById('btnEditQuote').href = `/orcamentos/form?id=${cardId}`;
         renderModalLabels(card);
@@ -527,11 +538,132 @@
             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ outcome }),
         });
-        document.querySelectorAll('.outcome-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.outcome === outcome);
-        });
         loadEnviadosStats();
         loadEnviados();
+    };
+
+    // ── Delivery Method ──
+    let activeDeliveryType = '';
+
+    function initDeliveryUI(type, target, toggleId, inputId) {
+        activeDeliveryType = type || '';
+        const toggle = document.getElementById(toggleId);
+        toggle.querySelectorAll('.delivery-opt').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+        const input = document.getElementById(inputId);
+        if (type) {
+            input.style.display = 'block';
+            input.value = target || '';
+            input.placeholder = type === 'email' ? 'email@exemplo.com' : 'https://sistema.gov.br/...';
+        } else {
+            input.style.display = 'none';
+            input.value = '';
+        }
+    }
+
+    window.setDeliveryType = async function (type) {
+        if (!activeCardId) return;
+        activeDeliveryType = type;
+        const toggle = document.getElementById('deliveryToggle');
+        toggle.querySelectorAll('.delivery-opt').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+        const input = document.getElementById('modalDeliveryTarget');
+        input.style.display = 'block';
+        input.placeholder = type === 'email' ? 'email@exemplo.com' : 'https://sistema.gov.br/...';
+        input.focus();
+        await fetch(`/api/pipeline/cards/${activeCardId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delivery_type: type }),
+        });
+        const card = allCards.find(c => c.id === activeCardId);
+        if (card) card.delivery_type = type;
+        updateSendActionButton(type, input.value);
+    };
+
+    window.saveDeliveryTarget = async function () {
+        if (!activeCardId) return;
+        const target = document.getElementById('modalDeliveryTarget').value.trim();
+        await fetch(`/api/pipeline/cards/${activeCardId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delivery_target: target }),
+        });
+        const card = allCards.find(c => c.id === activeCardId);
+        if (card) card.delivery_target = target;
+        updateSendActionButton(activeDeliveryType, target);
+    };
+
+    function updateSendActionButton(type, target) {
+        const btn = document.getElementById('btnSendAction');
+        const icon = document.getElementById('sendActionIcon');
+        const text = document.getElementById('sendActionText');
+        if (type && target) {
+            btn.style.display = 'flex';
+            if (type === 'email') {
+                icon.className = 'fas fa-envelope';
+                text.textContent = 'Enviar Email';
+            } else {
+                icon.className = 'fas fa-external-link-alt';
+                text.textContent = 'Acessar Sistema';
+            }
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
+    window.handleSendAction = function () {
+        const target = document.getElementById('modalDeliveryTarget').value.trim();
+        if (!target) return;
+        if (activeDeliveryType === 'email') {
+            globalThis.open(`mailto:${target}?subject=${encodeURIComponent(document.getElementById('modalTitle').textContent)}`, '_blank');
+        } else {
+            globalThis.open(target, '_blank');
+        }
+    };
+
+    // ── Links Manager ──
+    let activeCardLinks = [];
+
+    function renderLinks() {
+        const container = document.getElementById('modalLinksList');
+        if (!activeCardLinks.length) {
+            container.innerHTML = '<span style="color:#94a3b8;font-size:0.8rem;font-style:italic;">Nenhum link adicionado</span>';
+            return;
+        }
+        container.innerHTML = activeCardLinks.map((lk, i) =>
+            `<div class="link-item">
+                <a href="${escapeHtml(lk.url)}" target="_blank" rel="noopener" class="link-anchor">
+                    <i class="fas fa-external-link-alt"></i> ${escapeHtml(lk.label || lk.url)}
+                </a>
+                <button class="btn-icon btn-remove-link" onclick="removeLink(${i})" title="Remover"><i class="fas fa-times"></i></button>
+            </div>`
+        ).join('');
+    }
+
+    window.addLink = async function () {
+        if (!activeCardId) return;
+        const label = document.getElementById('linkLabelInput').value.trim();
+        const url = document.getElementById('linkUrlInput').value.trim();
+        if (!url) return;
+        activeCardLinks.push({ label: label || url, url });
+        document.getElementById('linkLabelInput').value = '';
+        document.getElementById('linkUrlInput').value = '';
+        renderLinks();
+        await fetch(`/api/pipeline/cards/${activeCardId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ links: activeCardLinks }),
+        });
+    };
+
+    window.removeLink = async function (index) {
+        if (!activeCardId) return;
+        activeCardLinks.splice(index, 1);
+        renderLinks();
+        await fetch(`/api/pipeline/cards/${activeCardId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ links: activeCardLinks }),
+        });
     };
 
     window.generateQuotesFromModal = function () {
@@ -547,6 +679,7 @@
 
     window.openNewCardModal = function () {
         newCardSelectedLabels = [];
+        newCardDeliveryType = '';
         document.getElementById('newCardModal').style.display = 'flex';
         document.getElementById('newCardTitle').value = '';
         document.getElementById('newCardSolicitante').value = '';
@@ -554,6 +687,9 @@
         document.getElementById('newCardAssignee').value = '';
         document.getElementById('newCardDeadline').value = '';
         document.getElementById('newCardLabelInput').value = '';
+        document.getElementById('newCardDeliveryTarget').value = '';
+        document.getElementById('newCardDeliveryTarget').style.display = 'none';
+        document.getElementById('newCardDeliveryToggle').querySelectorAll('.delivery-opt').forEach(b => b.classList.remove('active'));
         renderNewCardLabels();
         setTimeout(() => document.getElementById('newCardTitle').focus(), 100);
     };
@@ -603,6 +739,20 @@
         showLabelSuggestionsFor('newCardLabelInput', 'newCardLabelSuggestions', 'newCard');
     };
 
+    let newCardDeliveryType = '';
+
+    window.setNewCardDeliveryType = function (type) {
+        newCardDeliveryType = type;
+        const toggle = document.getElementById('newCardDeliveryToggle');
+        toggle.querySelectorAll('.delivery-opt').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+        const input = document.getElementById('newCardDeliveryTarget');
+        input.style.display = 'block';
+        input.placeholder = type === 'email' ? 'email@exemplo.com' : 'https://sistema.gov.br/...';
+        input.focus();
+    };
+
     window.submitNewCard = async function () {
         const titulo = document.getElementById('newCardTitle').value.trim();
         if (!titulo) { document.getElementById('newCardTitle').focus(); return; }
@@ -614,6 +764,8 @@
             assigned_to: document.getElementById('newCardAssignee').value || null,
             deadline: document.getElementById('newCardDeadline').value || null,
             label_ids: newCardSelectedLabels.map(l => l.id),
+            delivery_type: newCardDeliveryType || null,
+            delivery_target: document.getElementById('newCardDeliveryTarget').value.trim() || null,
         };
 
         try {
@@ -625,6 +777,8 @@
             if (data.success) {
                 closeNewCardModal();
                 loadCards();
+            } else {
+                console.error('Create card error:', data);
             }
         } catch (e) {
             console.error('Failed to create card:', e);

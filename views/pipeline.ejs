@@ -212,16 +212,47 @@
                 <!-- Outcome (for 'enviados') -->
                 <div class="sidebar-section" id="outcomeSection" style="display:none;">
                     <label class="sidebar-label"><i class="fas fa-trophy"></i> Resultado</label>
-                    <div class="outcome-buttons">
-                        <button class="outcome-btn outcome-won" data-outcome="won" onclick="setOutcome('won')">🏆 Vencemos</button>
-                        <button class="outcome-btn outcome-lost" data-outcome="lost" onclick="setOutcome('lost')">❌ Perdemos</button>
-                        <button class="outcome-btn outcome-pending" data-outcome="" onclick="setOutcome('')">⏳ Aguardando</button>
+                    <select id="modalOutcome" class="sidebar-select outcome-select" onchange="setOutcome(this.value)">
+                        <option value="">⏳ Aguardando</option>
+                        <option value="won">🏆 Vencemos</option>
+                        <option value="lost">❌ Perdemos</option>
+                        <option value="help">🤝 Para Ajudar</option>
+                    </select>
+                </div>
+
+                <!-- Delivery Method -->
+                <div class="sidebar-section">
+                    <label class="sidebar-label"><i class="fas fa-paper-plane"></i> Envio</label>
+                    <div class="delivery-toggle" id="deliveryToggle">
+                        <button class="delivery-opt" data-type="email" onclick="setDeliveryType('email')">
+                            <i class="fas fa-envelope"></i> Email
+                        </button>
+                        <button class="delivery-opt" data-type="link" onclick="setDeliveryType('link')">
+                            <i class="fas fa-globe"></i> Sistema
+                        </button>
+                    </div>
+                    <input type="text" id="modalDeliveryTarget" class="sidebar-input sidebar-input-sm"
+                        placeholder="Email ou URL do sistema..."
+                        onchange="saveDeliveryTarget()" style="margin-top:6px;display:none;">
+                </div>
+
+                <!-- Links -->
+                <div class="sidebar-section">
+                    <label class="sidebar-label"><i class="fas fa-link"></i> Links</label>
+                    <div id="modalLinksList" class="links-list"></div>
+                    <div class="link-add-row">
+                        <input type="text" id="linkLabelInput" class="sidebar-input sidebar-input-sm" placeholder="Rótulo" style="flex:1">
+                        <input type="text" id="linkUrlInput" class="sidebar-input sidebar-input-sm" placeholder="https://..." style="flex:2">
+                        <button class="btn-icon btn-add-link" onclick="addLink()" title="Adicionar"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
 
                 <!-- Quick Actions -->
                 <div class="sidebar-section">
                     <label class="sidebar-label"><i class="fas fa-bolt"></i> Ações</label>
+                    <a id="btnSendAction" href="#" class="sidebar-action" onclick="handleSendAction(); return false;" style="display:none;">
+                        <i class="fas fa-paper-plane" id="sendActionIcon"></i> <span id="sendActionText">Enviar</span>
+                    </a>
                     <a id="btnEditQuote" href="#" class="sidebar-action" target="_blank">
                         <i class="fas fa-edit"></i> Editar Orçamento
                     </a>
@@ -272,6 +303,19 @@
                     <label class="sidebar-label"><i class="fas fa-clock"></i> Data Limite</label>
                     <input type="datetime-local" id="newCardDeadline" class="sidebar-input">
                 </div>
+            </div>
+            <div class="modal-section">
+                <label class="sidebar-label"><i class="fas fa-paper-plane"></i> Tipo de Envio</label>
+                <div class="delivery-toggle" id="newCardDeliveryToggle">
+                    <button class="delivery-opt" data-type="email" onclick="setNewCardDeliveryType('email')">
+                        <i class="fas fa-envelope"></i> Email
+                    </button>
+                    <button class="delivery-opt" data-type="link" onclick="setNewCardDeliveryType('link')">
+                        <i class="fas fa-globe"></i> Sistema
+                    </button>
+                </div>
+                <input type="text" id="newCardDeliveryTarget" class="sidebar-input sidebar-input-sm"
+                    placeholder="Email ou URL do sistema..." style="margin-top:6px;display:none;">
             </div>
             <div class="modal-section">
                 <label class="sidebar-label"><i class="fas fa-tags"></i> Etiquetas</label>

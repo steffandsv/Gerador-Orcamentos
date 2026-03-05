@@ -1779,6 +1779,11 @@ tbody tr:hover {
     color: #dc2626;
 }
 
+.outcome-badge-help {
+    background: rgba(13, 148, 136, 0.08);
+    color: #0d9488;
+}
+
 .table-action-btn {
     width: 28px;
     height: 28px;
@@ -1930,8 +1935,137 @@ tbody tr:hover {
 }
 
 /* ========================================================================
-   MARKDOWN EDITOR — Tabs, Preview, Save Status
+   DELIVERY METHOD TOGGLE
    ======================================================================== */
+
+.delivery-toggle {
+    display: flex;
+    gap: 6px;
+}
+
+.delivery-opt {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.delivery-opt.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.delivery-opt:hover:not(.active) {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.delivery-opt i {
+    font-size: 0.72rem;
+}
+
+/* ========================================================================
+   LINKS LIST
+   ======================================================================== */
+
+.links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.link-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.link-anchor {
+    flex: 1;
+    font-size: 0.78rem;
+    color: var(--accent);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.link-anchor:hover {
+    text-decoration: underline;
+}
+
+.link-anchor i {
+    font-size: 0.65rem;
+    margin-right: 4px;
+    opacity: 0.7;
+}
+
+.btn-remove-link {
+    color: #94a3b8;
+    font-size: 0.65rem;
+    padding: 2px 4px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+
+.btn-remove-link:hover {
+    color: #ef4444;
+    background: #fef2f2;
+}
+
+.link-add-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.btn-add-link {
+    padding: 5px 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    transition: opacity 0.15s;
+}
+
+.btn-add-link:hover {
+    opacity: 0.85;
+}
+
+/* ========================================================================
+   OUTCOME SELECT (compact)
+   ======================================================================== */
+
+.outcome-select {
+    font-size: 0.85rem;
+    padding: 7px 10px;
+}
+
+/* ========================================================================
+   MARKDOWN EDITOR — Tabs, Preview, Save Status
+   ========================================================================
+ */
 
 .desc-tabs {
     display: flex;

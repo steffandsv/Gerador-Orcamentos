@@ -1,4 +1,4 @@
-import { mysqlTable, serial, varchar, text, int, decimal, datetime, tinyint, json, mysqlEnum, primaryKey } from 'drizzle-orm/mysql-core';
+import { mysqlTable, serial, varchar, text, int, decimal, datetime, tinyint, json, primaryKey } from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
 
 // ── Users ──
@@ -74,6 +74,9 @@ export const orcamentos = mysqlTable('orcamentos', {
   outcome: varchar('outcome', { length: 20 }),
   description: text('description'),
   position: int('position').notNull().default(0),
+  delivery_type: varchar('delivery_type', { length: 10 }),   // 'email' | 'link'
+  delivery_target: varchar('delivery_target', { length: 500 }), // email address or system URL
+  links: json('links'),  // JSON array: [{label, url}]
   // ── Audit fields ──
   created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
   updated_at: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),

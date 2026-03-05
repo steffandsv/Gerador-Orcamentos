@@ -58,6 +58,9 @@ pipelineRouter.get('/api/pipeline/cards', async (req: Request, res: Response) =>
             data_criacao: orcamentos.data_criacao,
             created_at: orcamentos.created_at,
             solicitante_nome: orcamentos.solicitante_nome,
+            delivery_type: orcamentos.delivery_type,
+            delivery_target: orcamentos.delivery_target,
+            links: orcamentos.links,
         })
         .from(orcamentos)
         .where(and(
@@ -145,7 +148,7 @@ pipelineRouter.get('/api/pipeline/cards', async (req: Request, res: Response) =>
 // ── POST /api/pipeline/cards — Create a new card from the New Cotação modal ──
 pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) => {
     try {
-        const { titulo, solicitante_nome, description, assigned_to, deadline, label_ids } = req.body;
+        const { titulo, solicitante_nome, description, assigned_to, deadline, label_ids, delivery_type, delivery_target, links } = req.body;
         if (!titulo || !titulo.trim()) {
             return res.status(400).json({ error: 'Título é obrigatório' });
         }
@@ -161,6 +164,9 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
             description: description?.trim() || null,
             assigned_to: assigned_to ? Number(assigned_to) : null,
             deadline: deadline ? new Date(deadline) : null,
+            delivery_type: delivery_type || null,
+            delivery_target: delivery_target?.trim() || null,
+            links: links || null,
             stage: 'inbox',
             position: Number(maxPos.max) + 1,
         } as any);
@@ -262,7 +268,7 @@ pipelineRouter.patch('/api/pipeline/cards/:id', async (req: Request, res: Respon
     try {
         const currentUser = res.locals.currentUser;
         const cardId = Number(req.params.id);
-        const { description, deadline, outcome } = req.body;
+        const { description, deadline, outcome, delivery_type, delivery_target, links } = req.body;
 
         const updateData: any = {
             updated_by: currentUser.id,
@@ -272,6 +278,9 @@ pipelineRouter.patch('/api/pipeline/cards/:id', async (req: Request, res: Respon
         if (description !== undefined) updateData.description = description;
         if (deadline !== undefined) updateData.deadline = deadline ? new Date(deadline) : null;
         if (outcome !== undefined) updateData.outcome = outcome || null;
+        if (delivery_type !== undefined) updateData.delivery_type = delivery_type || null;
+        if (delivery_target !== undefined) updateData.delivery_target = delivery_target?.trim() || null;
+        if (links !== undefined) updateData.links = links;
 
         await db.update(orcamentos).set(updateData).where(eq(orcamentos.id, cardId));
 
