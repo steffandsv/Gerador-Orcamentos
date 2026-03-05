@@ -97,7 +97,12 @@ apiRouter.post('/send_budget', pdfFields, async (req, res) => {
         let allSuccess = true;
 
         for (let i = 0; i < 3; i++) {
-            const companyRecords = await db.select().from(empresas).where(eq(empresas.id, companyIds[i]));
+            if (!companyIds[i]) {
+                results.push(`Empresa ${i + 1}: não configurada.`);
+                allSuccess = false;
+                continue;
+            }
+            const companyRecords = await db.select().from(empresas).where(eq(empresas.id, companyIds[i]!));
             if (companyRecords.length === 0) {
                 results.push(`Empresa ${i + 1}: não encontrada.`);
                 allSuccess = false;
