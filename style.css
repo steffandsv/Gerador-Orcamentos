@@ -436,11 +436,47 @@ tbody tr:hover {
     margin: 0;
 }
 
+.desc-wrapper {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+}
+
 .input-desc {
     resize: none;
     overflow: hidden;
     min-height: 34px;
     line-height: 1.4;
+    padding-right: 32px;
+}
+
+.btn-expand-desc {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #cbd5e1;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-expand-desc:hover {
+    color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.swal-desc-textarea {
+    min-height: 200px !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
 }
 
 .input-qty {

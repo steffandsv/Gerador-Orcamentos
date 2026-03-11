@@ -1,0 +1,99 @@
+
+> gerador-orcamentos@1.0.0 start
+> node dist/index.js
+
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+Server running at http://localhost:3000
+Login error: DrizzleQueryError: Failed query: select `id`, `username`, `password_hash`, `nome_completo`, `role`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by` from `usuarios` where `usuarios`.`username` = ? limit ?
+params: admin,1
+    at MySql2PreparedQuery.queryWithCache (/app/node_modules/drizzle-orm/mysql-core/session.cjs:50:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async MySql2PreparedQuery.execute (/app/node_modules/drizzle-orm/mysql2/session.cjs:99:20)
+    at async /app/dist/routes/auth.js:28:23 {
+  query: 'select `id`, `username`, `password_hash`, `nome_completo`, `role`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by` from `usuarios` where `usuarios`.`username` = ? limit ?',
+  params: [ 'admin', 1 ],
+  cause: Error
+      at PromisePool.query (/app/node_modules/mysql2/lib/promise/pool.js:36:22)
+      at /app/node_modules/drizzle-orm/mysql2/session.cjs:100:27
+      at MySql2PreparedQuery.queryWithCache (/app/node_modules/drizzle-orm/mysql-core/session.cjs:48:22)
+      at MySql2PreparedQuery.execute (/app/node_modules/drizzle-orm/mysql2/session.cjs:99:31)
+      at MySqlSelectBase.execute (/app/node_modules/drizzle-orm/mysql-core/query-builders/select.cjs:836:27)
+      at MySqlSelectBase.then (/app/node_modules/drizzle-orm/query-promise.cjs:44:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+    code: 'ECONNREFUSED',
+    errno: undefined,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+Login error: DrizzleQueryError: Failed query: select `id`, `username`, `password_hash`, `nome_completo`, `role`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by` from `usuarios` where `usuarios`.`username` = ? limit ?
+params: admin,1
+    at MySql2PreparedQuery.queryWithCache (/app/node_modules/drizzle-orm/mysql-core/session.cjs:50:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async MySql2PreparedQuery.execute (/app/node_modules/drizzle-orm/mysql2/session.cjs:99:20)
+    at async /app/dist/routes/auth.js:28:23 {
+  query: 'select `id`, `username`, `password_hash`, `nome_completo`, `role`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by` from `usuarios` where `usuarios`.`username` = ? limit ?',
+  params: [ 'admin', 1 ],
+  cause: Error
+      at PromisePool.query (/app/node_modules/mysql2/lib/promise/pool.js:36:22)
+      at /app/node_modules/drizzle-orm/mysql2/session.cjs:100:27
+      at MySql2PreparedQuery.queryWithCache (/app/node_modules/drizzle-orm/mysql-core/session.cjs:48:22)
+      at MySql2PreparedQuery.execute (/app/node_modules/drizzle-orm/mysql2/session.cjs:99:31)
+      at MySqlSelectBase.execute (/app/node_modules/drizzle-orm/mysql-core/query-builders/select.cjs:836:27)
+      at MySqlSelectBase.then (/app/node_modules/drizzle-orm/query-promise.cjs:44:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+    code: 'ECONNREFUSED',
+    errno: undefined,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+Login error: DrizzleQueryError: Failed query: select `id`, `username`, `password_hash`, `nome_completo`, `role`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by` from `usuarios` where `usuarios`.`username` = ? limit ?
+params: admin,1
+    at MySql2PreparedQuery.queryWithCache (/app/node_modules/drizzle-orm/mysql-core/session.cjs:50:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async MySql2PreparedQuery.execute (/app/node_modules/drizzle-orm/mysql2/session.cjs:99:20)
+    at async /app/dist/routes/auth.js:28:23 {
+  query: 'select `id`, `username`, `password_hash`, `nome_completo`, `role`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by` from `usuarios` where `usuarios`.`username` = ? limit ?',
+  params: [ 'admin', 1 ],
+  cause: Error
+      at PromisePool.query (/app/node_modules/mysql2/lib/promise/pool.js:36:22)
+      at /app/node_modules/drizzle-orm/mysql2/session.cjs:100:27
+      at MySql2PreparedQuery.queryWithCache (/app/node_modules/drizzle-orm/mysql-core/session.cjs:48:22)
+      at MySql2PreparedQuery.execute (/app/node_modules/drizzle-orm/mysql2/session.cjs:99:31)
+      at MySqlSelectBase.execute (/app/node_modules/drizzle-orm/mysql-core/query-builders/select.cjs:836:27)
+      at MySqlSelectBase.then (/app/node_modules/drizzle-orm/query-promise.cjs:44:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+    code: 'ECONNREFUSED',
+    errno: undefined,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
+Login error: DrizzleQueryError: Failed query: select `id`, `username`, `password_hash`, `nome_completo`, `role`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by` from `usuarios` where `usuarios`.`username` = ? limit ?
+params: admin,1
+    at MySql2PreparedQuery.queryWithCache (/app/node_modules/drizzle-orm/mysql-core/session.cjs:50:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async MySql2PreparedQuery.execute (/app/node_modules/drizzle-orm/mysql2/session.cjs:99:20)
+    at async /app/dist/routes/auth.js:28:23 {
+  query: 'select `id`, `username`, `password_hash`, `nome_completo`, `role`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`, `deleted_by` from `usuarios` where `usuarios`.`username` = ? limit ?',
+  params: [ 'admin', 1 ],
+  cause: Error
+      at PromisePool.query (/app/node_modules/mysql2/lib/promise/pool.js:36:22)
+      at /app/node_modules/drizzle-orm/mysql2/session.cjs:100:27
+      at MySql2PreparedQuery.queryWithCache (/app/node_modules/drizzle-orm/mysql-core/session.cjs:48:22)
+      at MySql2PreparedQuery.execute (/app/node_modules/drizzle-orm/mysql2/session.cjs:99:31)
+      at MySqlSelectBase.execute (/app/node_modules/drizzle-orm/mysql-core/query-builders/select.cjs:836:27)
+      at MySqlSelectBase.then (/app/node_modules/drizzle-orm/query-promise.cjs:44:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+    code: 'ECONNREFUSED',
+    errno: undefined,
+    sql: undefined,
+    sqlState: undefined,
+    sqlMessage: undefined
+  }
+}
