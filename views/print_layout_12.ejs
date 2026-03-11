@@ -122,7 +122,10 @@
         <tbody>
             <% items.forEach(function(item) { %>
             <tr>
-                <td><%= item.descricao %></td>
+                <td>
+                    <%= item.descricao %>
+                    <% if (item.marca_modelo) { %><br><small style="color: #666;">Marca/Modelo: <%= item.marca_modelo %></small><% } %>
+                </td>
                 <td style="text-align: center;"><%= item.unidade ?? 'UN' %></td>
                 <td style="text-align: center;"><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
                 <td style="text-align: right;"><%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
