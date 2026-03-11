@@ -122,7 +122,10 @@
                 grandTotal += item.total_price;
             %>
             <tr>
-                <td><%= item.descricao %></td>
+                <td>
+                    <%= item.descricao %>
+                    <% if (item.marca_modelo) { %><br><small style="color: #666;">Marca/Modelo: <%= item.marca_modelo %></small><% } %>
+                </td>
                 <td><%= item.unidade ?? 'UN' %></td>
                 <td><%= Number(item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
                 <td>R$ <%= Number(item.final_price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
