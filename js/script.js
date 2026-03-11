@@ -114,7 +114,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input type="number" name="items[${idx}][codigo]" value="${codigo}" class="input-codigo" min="1">
                     </td>
                     <td class="cell-desc">
-                        <textarea name="items[${idx}][descricao]" placeholder="Descrição do item" class="input-desc" rows="1" required>${desc}</textarea>
+                        <div class="desc-wrapper">
+                            <textarea name="items[${idx}][descricao]" placeholder="Descrição do item" class="input-desc" rows="1" required>${desc}</textarea>
+                            <button type="button" class="btn-expand-desc" title="Expandir Descrição">
+                                <i class="fas fa-expand-arrows-alt"></i>
+                            </button>
+                        </div>
                     </td>
                     <td class="cell-qty">
                         <input type="number" name="items[${idx}][quantidade]" value="${qty}" step="0.01" min="0.01" placeholder="1" class="input-qty" required>
@@ -232,6 +237,43 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.style.height = 'auto';
                     this.style.height = this.scrollHeight + 'px';
                 });
+
+                // Expand description button
+                const expandBtn = tr.querySelector('.btn-expand-desc');
+                if (expandBtn) {
+                    expandBtn.addEventListener('click', function() {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'Descrição do Item',
+                                input: 'textarea',
+                                inputValue: textarea.value,
+                                inputPlaceholder: 'Digite a descrição completa...',
+                                inputAttributes: {
+                                    'aria-label': 'Descrição completa'
+                                },
+                                showCancelButton: true,
+                                confirmButtonText: 'Salvar',
+                                cancelButtonText: 'Cancelar',
+                                customClass: {
+                                    input: 'swal-desc-textarea'
+                                }
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    textarea.value = result.value;
+                                    textarea.style.height = 'auto';
+                                    textarea.style.height = textarea.scrollHeight + 'px';
+                                }
+                            });
+                        } else {
+                            const newDesc = prompt('Descrição do Item:', textarea.value);
+                            if (newDesc !== null) {
+                                textarea.value = newDesc;
+                                textarea.style.height = 'auto';
+                                textarea.style.height = textarea.scrollHeight + 'px';
+                            }
+                        }
+                    });
+                }
 
                 // Link preview update
                 const linkInput = tr.querySelector('.input-link');
@@ -445,6 +487,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            function parseCSVLine(line, delimiter) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+
+                    if (char === '"') {
+                        if (inQuotes && line[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === delimiter && !inQuotes) {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(current);
+                return result;
+            }
+
             function processImportContent(text) {
                 if (!window.createRow || !tableBody) return;
                 
@@ -464,22 +532,27 @@ document.addEventListener('DOMContentLoaded', function() {
                          return;
                     }
                     
-                    const parts = line.split(delimiter);
+                    const parts = parseCSVLine(line, delimiter);
                     if (parts.length >= 2) {
-                        let desc = parts[0].trim().replace(/^"|"$/g, '');
-                        let qty = '1', vCompra = '0';
+                        let desc = parts[0].trim();
+                        let qty = '1', vCompra = '0', marca = '';
 
-                        if (parts.length >= 3) {
-                            qty = parts[1].trim().replace(/^"|"$/g, '').replace(',', '.');
-                            vCompra = parts[2].trim().replace(/^"|"$/g, '').replace(/[^\d.,]/g, '').replace(',', '.');
+                        if (parts.length >= 4) {
+                            qty = parts[1].trim().replace(',', '.');
+                            vCompra = parts[2].trim().replace(/[^\d.,]/g, '').replace(',', '.');
+                            marca = parts[3].trim();
+                        } else if (parts.length >= 3) {
+                            qty = parts[1].trim().replace(',', '.');
+                            vCompra = parts[2].trim().replace(/[^\d.,]/g, '').replace(',', '.');
                         } else {
-                            qty = parts[1].trim().replace(/^"|"$/g, '').replace(',', '.');
+                            qty = parts[1].trim().replace(',', '.');
                         }
 
                         createRow({
                             descricao: desc,
                             quantidade: qty,
-                            valor_compra: vCompra
+                            valor_compra: vCompra,
+                            marca_modelo: marca
                         });
                         addedCount++;
                     }
