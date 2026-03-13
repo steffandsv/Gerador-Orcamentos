@@ -127,3 +127,29 @@ export const comments = mysqlTable('comments', {
   updated_at: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deleted_at: datetime('deleted_at'),
 });
+
+// ── Card Activities (Activity Tab) ──
+export const card_activities = mysqlTable('card_activities', {
+  id: serial('id').primaryKey(),
+  orcamento_id: int('orcamento_id').notNull().references(() => orcamentos.id, { onDelete: 'cascade' }),
+  user_id: int('user_id'),
+  type: varchar('type', { length: 30 }).notNull(), // created, edited, pdf_generated, email_requested, email_sent, email_failed, email_pending
+  parent_activity_id: int('parent_activity_id'), // for sub-activities (email individual dispatches)
+  metadata: json('metadata'), // extra context: { field, company_name, scheduled_at, error, ... }
+  created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ── Email Queue ──
+export const email_queue = mysqlTable('email_queue', {
+  id: serial('id').primaryKey(),
+  orcamento_id: int('orcamento_id').notNull().references(() => orcamentos.id, { onDelete: 'cascade' }),
+  company_index: int('company_index').notNull(), // 1, 2, or 3
+  activity_id: int('activity_id'), // FK to card_activities (sub-activity)
+  recipient_email: varchar('recipient_email', { length: 500 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // pending, sent, failed
+  scheduled_at: datetime('scheduled_at').notNull(),
+  sent_at: datetime('sent_at'),
+  error: text('error'),
+  pdf_data: text('pdf_data'), // base64-encoded PDF blob
+  created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+});

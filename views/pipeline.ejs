@@ -129,6 +129,9 @@
                     <button class="card-tab" data-tab="comments" onclick="switchCardTab('comments')">
                         <i class="fas fa-comments"></i> Comentários <span id="commentCountBadge" class="tab-badge" style="display:none;"></span>
                     </button>
+                    <button class="card-tab" data-tab="activity" onclick="switchCardTab('activity')">
+                        <i class="fas fa-history"></i> Atividade
+                    </button>
                 </div>
 
                 <!-- Tab: Descrição -->
@@ -200,6 +203,13 @@
                                 <i class="fas fa-paper-plane"></i> Enviar
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Atividade -->
+                <div class="card-tab-content" id="tabActivity" style="display:none;">
+                    <div class="modal-section">
+                        <div id="activityTimeline" class="activity-timeline"></div>
                     </div>
                 </div>
             </div>

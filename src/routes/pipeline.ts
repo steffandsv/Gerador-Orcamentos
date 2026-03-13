@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { orcamentos, labels, orcamento_labels, comments, usuarios, itens_orcamento } from '../db/schema';
-import { eq, asc, desc, isNull, sql, and, inArray } from 'drizzle-orm';
+import { orcamentos, labels, orcamento_labels, comments, usuarios, itens_orcamento, card_activities, email_queue, empresas } from '../db/schema';
+import { eq, asc, desc, isNull, sql, and, inArray, lte } from 'drizzle-orm';
 import { logAudit } from '../lib/audit';
+import nodemailer from 'nodemailer';
+import multer from 'multer';
 
 export const pipelineRouter = Router();
 
@@ -212,6 +214,15 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
         }
 
         broadcastSSE('card_updated', { cardId: newId });
+
+        // Log activity for Activity tab
+        await logActivity({
+            orcamentoId: newId,
+            userId: user?.id,
+            type: 'created',
+            metadata: { titulo: titulo.trim() },
+        });
+
         res.json({ success: true, id: newId });
     } catch (e: any) {
         console.error('Create card error:', e);
@@ -760,3 +771,356 @@ pipelineRouter.get('/api/pipeline/enviados', async (req: Request, res: Response)
         res.status(500).json({ error: 'Failed to load enviados' });
     }
 });
+
+// ══════════════════════════════════════════════════════════════
+// ACTIVITY LOGGING HELPER
+// ══════════════════════════════════════════════════════════════
+
+async function logActivity(params: {
+    orcamentoId: number;
+    userId?: number | null;
+    type: string;
+    parentActivityId?: number | null;
+    metadata?: any;
+}) {
+    const [result] = await db.insert(card_activities).values({
+        orcamento_id: params.orcamentoId,
+        user_id: params.userId ?? null,
+        type: params.type,
+        parent_activity_id: params.parentActivityId ?? null,
+        metadata: params.metadata ?? null,
+    } as any);
+    return (result as any).insertId as number;
+}
+
+// ── GET /api/pipeline/cards/:id/activities — Activity timeline ──
+pipelineRouter.get('/api/pipeline/cards/:id/activities', async (req: Request, res: Response) => {
+    try {
+        const cardId = Number(req.params.id);
+
+        const activities = await db.select({
+            id: card_activities.id,
+            type: card_activities.type,
+            parent_activity_id: card_activities.parent_activity_id,
+            metadata: card_activities.metadata,
+            created_at: card_activities.created_at,
+            user_id: card_activities.user_id,
+            username: usuarios.username,
+            nome_completo: usuarios.nome_completo,
+        })
+        .from(card_activities)
+        .leftJoin(usuarios, eq(card_activities.user_id, usuarios.id))
+        .where(eq(card_activities.orcamento_id, cardId))
+        .orderBy(desc(card_activities.created_at));
+
+        // Structure: top-level activities with children nested
+        const topLevel: any[] = [];
+        const childrenMap: Record<number, any[]> = {};
+
+        for (const a of activities) {
+            if (a.parent_activity_id) {
+                if (!childrenMap[a.parent_activity_id]) childrenMap[a.parent_activity_id] = [];
+                childrenMap[a.parent_activity_id].push(a);
+            }
+        }
+
+        for (const a of activities) {
+            if (!a.parent_activity_id) {
+                topLevel.push({
+                    ...a,
+                    children: (childrenMap[a.id] || []).sort((x: any, y: any) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime()),
+                });
+            }
+        }
+
+        res.json({ activities: topLevel });
+    } catch (e) {
+        console.error('Activities error:', e);
+        res.status(500).json({ error: 'Failed to load activities' });
+    }
+});
+
+// ── POST /api/pipeline/cards/:id/log-activity — Log PDF generation or other events ──
+pipelineRouter.post('/api/pipeline/cards/:id/log-activity', async (req: Request, res: Response) => {
+    try {
+        const currentUser = res.locals.currentUser;
+        const cardId = Number(req.params.id);
+        const { type, metadata } = req.body;
+
+        const id = await logActivity({
+            orcamentoId: cardId,
+            userId: currentUser.id,
+            type,
+            metadata,
+        });
+
+        res.json({ success: true, id });
+    } catch (e) {
+        console.error('Log activity error:', e);
+        res.status(500).json({ error: 'Failed to log activity' });
+    }
+});
+
+// ══════════════════════════════════════════════════════════════
+// EMAIL QUEUE — Send Emails Endpoint + Processor
+// ══════════════════════════════════════════════════════════════
+
+const queueUpload = multer({ storage: multer.memoryStorage() });
+const queuePdfFields = queueUpload.fields([
+    { name: 'pdf1', maxCount: 1 },
+    { name: 'pdf2', maxCount: 1 },
+    { name: 'pdf3', maxCount: 1 },
+]);
+
+// ── POST /api/pipeline/cards/:id/send-emails — Queue 3 emails with random delays ──
+pipelineRouter.post('/api/pipeline/cards/:id/send-emails', queuePdfFields, async (req: Request, res: Response) => {
+    try {
+        const currentUser = res.locals.currentUser;
+        const cardId = Number(req.params.id);
+        const recipientEmail = req.body.recipient_email;
+
+        if (!recipientEmail) {
+            return res.status(400).json({ success: false, message: 'Email do destinatário é obrigatório.' });
+        }
+
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        if (!files?.pdf1?.[0] || !files?.pdf2?.[0] || !files?.pdf3?.[0]) {
+            return res.status(400).json({ success: false, message: 'Os 3 PDFs são obrigatórios.' });
+        }
+
+        // Validate card has 3 companies
+        const [card] = await db.select().from(orcamentos).where(eq(orcamentos.id, cardId));
+        if (!card) return res.status(404).json({ success: false, message: 'Orçamento não encontrado.' });
+        if (!card.empresa1_id || !card.empresa2_id || !card.empresa3_id) {
+            return res.status(400).json({ success: false, message: 'Selecione as 3 empresas no orçamento antes de enviar.' });
+        }
+
+        // Create parent activity: email_requested
+        const parentActivityId = await logActivity({
+            orcamentoId: cardId,
+            userId: currentUser.id,
+            type: 'email_requested',
+            metadata: { recipient: recipientEmail },
+        });
+
+        // Generate random delays: 0min, 1-5min, (previous + 1-5min)
+        const delays = [0];
+        delays.push(delays[0] + (Math.floor(Math.random() * 5) + 1)); // 1-5 min after first
+        delays.push(delays[1] + (Math.floor(Math.random() * 5) + 1)); // 1-5 min after second
+
+        const now = new Date();
+        const pdfKeys = ['pdf1', 'pdf2', 'pdf3'] as const;
+        const scheduledTimes: Date[] = [];
+
+        for (let i = 0; i < 3; i++) {
+            const scheduledAt = new Date(now.getTime() + delays[i] * 60 * 1000);
+            scheduledTimes.push(scheduledAt);
+
+            // Create sub-activity: email_pending
+            const subActivityId = await logActivity({
+                orcamentoId: cardId,
+                userId: currentUser.id,
+                type: 'email_pending',
+                parentActivityId,
+                metadata: { company_index: i + 1, scheduled_at: scheduledAt.toISOString() },
+            });
+
+            // Convert PDF buffer to base64 for storage
+            const pdfBase64 = files[pdfKeys[i]][0].buffer.toString('base64');
+
+            // Insert into email_queue
+            await db.insert(email_queue).values({
+                orcamento_id: cardId,
+                company_index: i + 1,
+                activity_id: subActivityId,
+                recipient_email: recipientEmail,
+                status: 'pending',
+                scheduled_at: scheduledAt,
+                pdf_data: pdfBase64,
+            } as any);
+        }
+
+        await logAudit({
+            userId: currentUser.id,
+            username: currentUser.username,
+            action: 'email_requested',
+            entity: 'orcamento',
+            entityId: cardId,
+            details: `Disparos de email solicitados para ${recipientEmail} (delays: ${delays.map(d => d + 'min').join(', ')})`,
+            newData: { recipientEmail, delays, scheduledTimes: scheduledTimes.map(d => d.toISOString()) },
+            ipAddress: req.ip ?? null,
+        });
+
+        broadcastSSE('card_updated', { cardId, type: 'email_queued' });
+
+        res.json({
+            success: true,
+            message: `Fila de envio criada! ${delays.map((d, i) => `Email ${i + 1}: ${d === 0 ? 'agora' : `em ${d} min`}`).join(', ')}.`,
+            scheduled: scheduledTimes.map(d => d.toISOString()),
+        });
+
+    } catch (e: any) {
+        console.error('Send emails queue error:', e);
+        res.status(500).json({ success: false, message: 'Erro ao criar fila de envio: ' + e.message });
+    }
+});
+
+// ── Email Queue Processor — runs every 15 seconds ──
+async function processEmailQueue() {
+    try {
+        const now = new Date();
+
+        // Find pending emails that are ready to send
+        const pendingEmails = await db.select()
+            .from(email_queue)
+            .where(and(
+                eq(email_queue.status, 'pending'),
+                lte(email_queue.scheduled_at, now),
+            ))
+            .limit(5);
+
+        for (const item of pendingEmails) {
+            try {
+                // Get the orcamento + company
+                const [orc] = await db.select().from(orcamentos).where(eq(orcamentos.id, item.orcamento_id));
+                if (!orc) {
+                    await db.update(email_queue).set({ status: 'failed', error: 'Orçamento não encontrado' }).where(eq(email_queue.id, item.id));
+                    continue;
+                }
+
+                const companyIds = [orc.empresa1_id, orc.empresa2_id, orc.empresa3_id];
+                const companyId = companyIds[item.company_index - 1];
+                if (!companyId) {
+                    await db.update(email_queue).set({ status: 'failed', error: `Empresa ${item.company_index} não configurada` }).where(eq(email_queue.id, item.id));
+                    if (item.activity_id) {
+                        await db.update(card_activities).set({
+                            type: 'email_failed',
+                            metadata: { company_index: item.company_index, error: `Empresa ${item.company_index} não configurada` },
+                        } as any).where(eq(card_activities.id, item.activity_id));
+                    }
+                    continue;
+                }
+
+                const [company] = await db.select().from(empresas).where(eq(empresas.id, companyId));
+                if (!company || !company.smtp_host || !company.smtp_user || !company.smtp_pass) {
+                    const err = !company ? 'Empresa não encontrada' : 'SMTP não configurado';
+                    await db.update(email_queue).set({ status: 'failed', error: err }).where(eq(email_queue.id, item.id));
+                    if (item.activity_id) {
+                        await db.update(card_activities).set({
+                            type: 'email_failed',
+                            metadata: { company_index: item.company_index, company_name: company?.nome, error: err },
+                        } as any).where(eq(card_activities.id, item.activity_id));
+                    }
+                    continue;
+                }
+
+                // Create transporter
+                const transporter = nodemailer.createTransport({
+                    host: company.smtp_host,
+                    port: Number.parseInt(company.smtp_port || '587'),
+                    secure: company.smtp_secure === 'ssl',
+                    auth: { user: company.smtp_user, pass: company.smtp_pass },
+                });
+
+                // Randomized subject
+                const subjectTemplates = [
+                    `Orçamento - ${orc.titulo} - ${company.nome}`,
+                    `Proposta Comercial - ${orc.titulo}`,
+                    `Cotação de Preços - ${orc.titulo} | ${company.nome}`,
+                    `Envio de Orçamento: ${orc.titulo}`,
+                    `${company.nome} - Orçamento Ref. ${orc.titulo}`,
+                    `Proposta de Fornecimento - ${orc.titulo}`,
+                    `Orçamento para ${orc.titulo} - ${company.nome}`,
+                    `Cotação: ${orc.titulo} | Ref. ${company.nome}`,
+                    `Apresentação de Proposta - ${orc.titulo}`,
+                    `${company.nome} | Cotação - ${orc.titulo}`,
+                    `Proposta de Preços - ${orc.titulo}`,
+                    `Orçamento Comercial: ${orc.titulo} - ${company.nome}`,
+                ];
+                const subject = subjectTemplates[Math.floor(Math.random() * subjectTemplates.length)];
+
+                // Randomized body
+                const nome = company.nome;
+                const doc = company.documento || '';
+                const email = company.email || '';
+                const tel = company.telefone || '';
+                const sol = orc.solicitante_nome || '';
+                const titulo = orc.titulo;
+
+                const assinatura = (fields: ('doc' | 'email' | 'tel')[]) => {
+                    let sig = `<p><strong>${nome}</strong></p>`;
+                    if (fields.includes('doc') && doc) sig += `<p>CNPJ: ${doc}</p>`;
+                    if (fields.includes('email') && email) sig += `<p>${email}</p>`;
+                    if (fields.includes('tel') && tel) sig += `<p>Tel: ${tel}</p>`;
+                    return sig;
+                };
+
+                const bodyTemplates = [
+                    `<p>Prezado(a),</p><p>Encaminhamos em anexo nosso orçamento referente a <strong>${titulo}</strong>.</p><p>Ficamos à disposição para quaisquer esclarecimentos.</p><p>Atenciosamente,</p>${assinatura(['doc', 'email', 'tel'])}`,
+                    `<p>Prezado(a),</p><p>Conforme solicitado, segue anexo o orçamento da empresa <strong>${nome}</strong> para o processo: <strong>${titulo}</strong>.</p><p>Cordialmente,</p>${assinatura(['doc'])}`,
+                    `<p>Prezado(a),</p><p>Segue em anexo nossa proposta comercial referente a: <strong>${titulo}</strong>.</p>${sol ? `<p>Solicitante: ${sol}</p>` : ''}<p>Permanecemos à disposição.</p><p>Atenciosamente,</p>${assinatura(['doc', 'tel'])}`,
+                    `<p>Prezado Senhor(a),</p><p>Vimos por meio deste apresentar nossa cotação de preços para <strong>${titulo}</strong>, conforme documento em anexo.</p><p>Sem mais para o momento,</p>${assinatura(['doc', 'email'])}`,
+                    `<p>Prezado(a),</p><p>Enviamos em anexo o orçamento solicitado referente a <strong>${titulo}</strong>.</p><p>Quaisquer dúvidas, estamos à disposição.</p><p>Att,</p>${assinatura(['email', 'tel'])}`,
+                    `<p>Prezado(a),</p><p>Em atenção à solicitação de cotação, encaminhamos anexo nosso orçamento para <strong>${titulo}</strong>.</p><p>Colocamo-nos à inteira disposição.</p><p>Respeitosamente,</p>${assinatura(['doc'])}`,
+                    `<p>Prezado(a),</p><p>É com satisfação que apresentamos nossa proposta para <strong>${titulo}</strong>, conforme arquivo anexo.</p>${sol ? `<p>Ref. Solicitante: ${sol}</p>` : ''}<p>Atenciosamente,</p>${assinatura(['doc', 'email', 'tel'])}`,
+                    `<p>A/C Setor de Compras,</p><p>Segue proposta de preços da <strong>${nome}</strong> referente a <strong>${titulo}</strong>.</p><p>Aguardamos retorno. Desde já agradecemos a oportunidade.</p><p>Atenciosamente,</p>${assinatura(['doc', 'email'])}`,
+                ];
+                const html = bodyTemplates[Math.floor(Math.random() * bodyTemplates.length)];
+
+                // Decode PDF from base64
+                const pdfBuffer = Buffer.from(item.pdf_data!, 'base64');
+                const safeCompanyName = nome.replace(/[^a-zA-Z0-9]/g, '_');
+
+                await transporter.sendMail({
+                    from: company.smtp_user,
+                    to: item.recipient_email,
+                    subject,
+                    html,
+                    attachments: [{
+                        filename: `orcamento_${safeCompanyName}.pdf`,
+                        content: pdfBuffer,
+                    }],
+                });
+
+                // Success — update queue + activity
+                await db.update(email_queue).set({
+                    status: 'sent',
+                    sent_at: new Date(),
+                    pdf_data: null, // clear the blob to save space
+                }).where(eq(email_queue.id, item.id));
+
+                if (item.activity_id) {
+                    await db.update(card_activities).set({
+                        type: 'email_sent',
+                        metadata: { company_index: item.company_index, company_name: company.nome, sent_at: new Date().toISOString(), subject },
+                    } as any).where(eq(card_activities.id, item.activity_id));
+                }
+
+                broadcastSSE('card_updated', { cardId: item.orcamento_id, type: 'email_sent', company_index: item.company_index });
+                console.log(`[EmailQueue] ✅ Sent email ${item.company_index}/3 for orcamento #${item.orcamento_id} via ${company.nome}`);
+
+            } catch (emailErr: any) {
+                console.error(`[EmailQueue] ❌ Failed email ${item.company_index}/3 for orcamento #${item.orcamento_id}:`, emailErr.message);
+                await db.update(email_queue).set({
+                    status: 'failed',
+                    error: emailErr.message,
+                }).where(eq(email_queue.id, item.id));
+
+                if (item.activity_id) {
+                    await db.update(card_activities).set({
+                        type: 'email_failed',
+                        metadata: { company_index: item.company_index, error: emailErr.message },
+                    } as any).where(eq(card_activities.id, item.activity_id));
+                }
+
+                broadcastSSE('card_updated', { cardId: item.orcamento_id, type: 'email_failed', company_index: item.company_index });
+            }
+        }
+    } catch (e) {
+        console.error('[EmailQueue] Processor error:', e);
+    }
+}
+
+// Start queue processor — check every 15 seconds
+setInterval(processEmailQueue, 15_000);
+console.log('[EmailQueue] Processor started (15s interval)');

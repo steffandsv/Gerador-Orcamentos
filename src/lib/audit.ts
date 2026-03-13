@@ -14,7 +14,10 @@ export type AuditAction =
   | 'move_card'
   | 'assign_card'
   | 'add_comment'
-  | 'add_label';
+  | 'add_label'
+  | 'email_requested'
+  | 'email_queued'
+  | 'pdf_generated';
 
 export async function logAudit(params: {
   userId: number;

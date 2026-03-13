@@ -413,9 +413,11 @@
             c.style.display = 'none';
             c.classList.remove('active');
         });
-        const tabEl = document.getElementById(tab === 'desc' ? 'tabDesc' : tab === 'stats' ? 'tabStats' : 'tabComments');
+        const tabMap = { desc: 'tabDesc', stats: 'tabStats', comments: 'tabComments', activity: 'tabActivity' };
+        const tabEl = document.getElementById(tabMap[tab]);
         if (tabEl) { tabEl.style.display = 'block'; tabEl.classList.add('active'); }
         if (tab === 'stats' && activeCardId) loadCardStats(activeCardId);
+        if (tab === 'activity' && activeCardId) loadActivities(activeCardId);
     };
 
     async function loadCardStats(cardId) {
@@ -639,38 +641,126 @@
         const target = document.getElementById('modalDeliveryTarget').value.trim();
         if (!target) return;
 
-        // Validate the orcamento is complete before sending
-        if (activeDeliveryType === 'email' && activeCardId) {
-            try {
-                const statsRes = await fetch(`/api/pipeline/cards/${activeCardId}/stats`);
-                const stats = await statsRes.json();
-                if (!stats.item_count || stats.item_count === 0) {
-                    alert('⚠️ O orçamento não possui itens. Edite o orçamento e adicione itens antes de enviar.');
-                    return;
-                }
-                if (stats.total_venda === null || stats.total_venda === 0) {
-                    alert('⚠️ O orçamento não possui valores de venda preenchidos. Complete todos os campos antes de enviar.');
-                    return;
-                }
-
-                // Check empresas are set
-                const cardRes = await fetch(`/api/pipeline/cards/${activeCardId}/detail`);
-                if (cardRes.ok) {
-                    const card = await cardRes.json();
-                    if (!card.empresa1_id || !card.empresa2_id || !card.empresa3_id) {
-                        alert('⚠️ Selecione as 3 empresas no orçamento antes de enviar.');
-                        return;
-                    }
-                }
-            } catch (e) {
-                console.error('Validation error:', e);
-            }
+        // For link type, just open the URL
+        if (activeDeliveryType !== 'email') {
+            globalThis.open(target, '_blank');
+            return;
         }
 
-        if (activeDeliveryType === 'email') {
-            globalThis.open(`mailto:${target}?subject=${encodeURIComponent(document.getElementById('modalTitle').textContent)}`, '_blank');
-        } else {
-            globalThis.open(target, '_blank');
+        // Email type — validate then generate PDFs and queue emails
+        if (!activeCardId) return;
+
+        try {
+            // Validate stats
+            const statsRes = await fetch(`/api/pipeline/cards/${activeCardId}/stats`);
+            const stats = await statsRes.json();
+            if (!stats.item_count || stats.item_count === 0) {
+                alert('⚠️ O orçamento não possui itens. Edite o orçamento e adicione itens antes de enviar.');
+                return;
+            }
+            if (stats.total_venda === null || stats.total_venda === 0) {
+                alert('⚠️ O orçamento não possui valores de venda preenchidos. Complete todos os campos antes de enviar.');
+                return;
+            }
+
+            // Validate empresas
+            const cardRes = await fetch(`/api/pipeline/cards/${activeCardId}/detail`);
+            if (cardRes.ok) {
+                const card = await cardRes.json();
+                if (!card.empresa1_id || !card.empresa2_id || !card.empresa3_id) {
+                    alert('⚠️ Selecione as 3 empresas no orçamento antes de enviar.');
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('Validation error:', e);
+        }
+
+        // Show overlay and generate 3 PDFs
+        const sendBtn = document.getElementById('btnSendAction');
+        const originalText = document.getElementById('sendActionText').textContent;
+        document.getElementById('sendActionText').textContent = 'Gerando PDFs...';
+        sendBtn.style.pointerEvents = 'none';
+        sendBtn.style.opacity = '0.6';
+
+        const overlay = document.createElement('div');
+        overlay.id = 'pdf-generation-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;';
+        overlay.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 20px;">Gerando PDF <span id="overlay-counter">1</span>/3...</div>
+            <div id="pdf-container-visible" style="background:white; width:790px; height:auto; padding:0; color:black; overflow:hidden; transform: scale(0.8); transform-origin: top center;"></div>
+        `;
+        document.body.appendChild(overlay);
+
+        try {
+            const container = document.getElementById('pdf-container-visible');
+            const counter = document.getElementById('overlay-counter');
+            const formData = new FormData();
+            formData.append('recipient_email', target);
+
+            for (let i = 1; i <= 3; i++) {
+                counter.innerText = i;
+                const url = `/print?id=${activeCardId}&company_index=${i}`;
+                const response = await fetch(url);
+                const htmlText = await response.text();
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                let css = '';
+                doc.querySelectorAll('style').forEach(style => { css += style.innerHTML; });
+                const bodyContent = doc.body.innerHTML;
+                container.innerHTML = `<style>${css}</style><div class="pdf-content" style="padding:20px;">${bodyContent}</div>`;
+
+                await new Promise(r => setTimeout(r, 800));
+
+                const opt = {
+                    margin: 0,
+                    filename: `orcamento_${activeCardId}_${i}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
+                formData.append(`pdf${i}`, pdfBlob, `orcamento_${i}.pdf`);
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            document.body.removeChild(overlay);
+            document.getElementById('sendActionText').textContent = 'Enviando para fila...';
+
+            // Send to backend queue
+            const res = await fetch(`/api/pipeline/cards/${activeCardId}/send-emails`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const json = await res.json();
+
+            if (json.success) {
+                document.getElementById('sendActionText').textContent = '✅ Fila criada!';
+                sendBtn.style.opacity = '1';
+                setTimeout(() => {
+                    document.getElementById('sendActionText').textContent = originalText;
+                    sendBtn.style.pointerEvents = 'auto';
+                }, 3000);
+                // Auto-switch to Activity tab
+                switchCardTab('activity');
+            } else {
+                alert('❌ ' + json.message);
+                document.getElementById('sendActionText').textContent = originalText;
+                sendBtn.style.pointerEvents = 'auto';
+                sendBtn.style.opacity = '1';
+            }
+
+        } catch (err) {
+            console.error('Send emails error:', err);
+            alert('Erro ao enviar: ' + err.message);
+            const overlayEl = document.getElementById('pdf-generation-overlay');
+            if (overlayEl) document.body.removeChild(overlayEl);
+            document.getElementById('sendActionText').textContent = originalText;
+            sendBtn.style.pointerEvents = 'auto';
+            sendBtn.style.opacity = '1';
         }
     };
 
@@ -723,6 +813,12 @@
         window.open(`/print?id=${activeCardId}&company_index=1`, '_blank');
         setTimeout(() => window.open(`/print?id=${activeCardId}&company_index=2`, '_blank'), 200);
         setTimeout(() => window.open(`/print?id=${activeCardId}&company_index=3`, '_blank'), 400);
+        // Log PDF generation activity
+        fetch(`/api/pipeline/cards/${activeCardId}/log-activity`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'pdf_generated', metadata: {} }),
+        }).catch(e => console.error('Failed to log PDF activity:', e));
     };
 
     // ══════════════════════════════════════════════════════════
@@ -1225,6 +1321,145 @@
         document.getElementById('filterSearch')?.addEventListener('input', debounce(renderBoard, 200));
         document.getElementById('filterAssignee')?.addEventListener('change', renderBoard);
         document.getElementById('filterLabel')?.addEventListener('change', renderBoard);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // ACTIVITIES TIMELINE
+    // ══════════════════════════════════════════════════════════
+
+    let activityRefreshTimer = null;
+
+    async function loadActivities(cardId) {
+        const container = document.getElementById('activityTimeline');
+        container.innerHTML = '<div class="activity-loading"><i class="fas fa-spinner fa-spin"></i> Carregando atividades...</div>';
+
+        try {
+            const res = await fetch(`/api/pipeline/cards/${cardId}/activities`);
+            const data = await res.json();
+            renderActivities(data.activities || [], container);
+
+            // Auto-refresh if there are pending emails
+            if (activityRefreshTimer) clearInterval(activityRefreshTimer);
+            const hasPending = (data.activities || []).some(a =>
+                a.type === 'email_requested' && a.children?.some(c => c.type === 'email_pending')
+            );
+            if (hasPending) {
+                activityRefreshTimer = setInterval(() => {
+                    const activeTab = document.querySelector('.card-tab.active');
+                    if (activeTab?.dataset.tab === 'activity' && activeCardId === cardId) {
+                        loadActivities(cardId);
+                    } else {
+                        clearInterval(activityRefreshTimer);
+                        activityRefreshTimer = null;
+                    }
+                }, 10000);
+            }
+        } catch (e) {
+            container.innerHTML = '<div class="activity-empty">Erro ao carregar atividades.</div>';
+            console.error('Load activities error:', e);
+        }
+    }
+
+    function renderActivities(activities, container) {
+        if (activities.length === 0) {
+            container.innerHTML = '<div class="activity-empty"><i class="fas fa-history" style="font-size:2rem;color:#334155;margin-bottom:8px;"></i><p>Nenhuma atividade registrada.</p></div>';
+            return;
+        }
+
+        container.innerHTML = activities.map(a => {
+            const meta = getActivityMeta(a.type);
+            const user = a.nome_completo || a.username || 'Sistema';
+            const date = a.created_at ? formatActivityDate(a.created_at) : '';
+
+            let childrenHtml = '';
+            if (a.children && a.children.length > 0) {
+                childrenHtml = '<div class="activity-children">' + a.children.map(c => {
+                    const cMeta = getActivityMeta(c.type);
+                    const cDate = c.created_at ? formatActivityDate(c.created_at) : '';
+                    const cDetail = getSubActivityDetail(c);
+                    return `<div class="activity-child">
+                        <span class="activity-child-icon" style="color:${cMeta.color}">${cMeta.icon}</span>
+                        <div class="activity-child-content">
+                            <span class="activity-child-text">${cDetail}</span>
+                            <span class="activity-child-date">${cDate}</span>
+                        </div>
+                    </div>`;
+                }).join('') + '</div>';
+            }
+
+            const detail = getActivityDetail(a);
+
+            return `<div class="activity-item">
+                <div class="activity-icon" style="background:${meta.bgColor};color:${meta.color}">
+                    <i class="${meta.iconClass}"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-header">
+                        <span class="activity-user">${escapeHtml(user)}</span>
+                        <span class="activity-date">${date}</span>
+                    </div>
+                    <div class="activity-text">${detail}</div>
+                    ${childrenHtml}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function getActivityMeta(type) {
+        const map = {
+            created: { icon: '🆕', iconClass: 'fas fa-plus-circle', color: '#22c55e', bgColor: 'rgba(34,197,94,0.15)' },
+            edited: { icon: '✏️', iconClass: 'fas fa-pencil-alt', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.15)' },
+            pdf_generated: { icon: '🖨️', iconClass: 'fas fa-print', color: '#8b5cf6', bgColor: 'rgba(139,92,246,0.15)' },
+            email_requested: { icon: '📧', iconClass: 'fas fa-paper-plane', color: '#f59e0b', bgColor: 'rgba(245,158,11,0.15)' },
+            email_pending: { icon: '⏳', iconClass: 'fas fa-clock', color: '#94a3b8', bgColor: 'rgba(148,163,184,0.15)' },
+            email_sent: { icon: '✅', iconClass: 'fas fa-check-circle', color: '#22c55e', bgColor: 'rgba(34,197,94,0.15)' },
+            email_failed: { icon: '❌', iconClass: 'fas fa-times-circle', color: '#ef4444', bgColor: 'rgba(239,68,68,0.15)' },
+        };
+        return map[type] || { icon: '📋', iconClass: 'fas fa-info-circle', color: '#64748b', bgColor: 'rgba(100,116,139,0.15)' };
+    }
+
+    function getActivityDetail(a) {
+        const meta = a.metadata || {};
+        switch (a.type) {
+            case 'created': return 'Criou este cartão';
+            case 'edited': return `Editou o orçamento${meta.field ? ` (${meta.field})` : ''}`;
+            case 'pdf_generated': return 'Gerou os 3 PDFs de orçamento';
+            case 'email_requested': return `Solicitou o disparo de 3 emails${meta.recipient ? ` para <strong>${escapeHtml(meta.recipient)}</strong>` : ''}`;
+            default: return a.type;
+        }
+    }
+
+    function getSubActivityDetail(c) {
+        const meta = c.metadata || {};
+        const idx = meta.company_index || '?';
+        const ordinal = idx === 1 ? '1º' : idx === 2 ? '2º' : '3º';
+
+        switch (c.type) {
+            case 'email_pending': {
+                const scheduled = meta.scheduled_at ? new Date(meta.scheduled_at) : null;
+                const now = new Date();
+                if (scheduled && scheduled > now) {
+                    const diff = Math.ceil((scheduled - now) / 60000);
+                    return `${ordinal} orçamento: <span class="status-pending">⏳ Aguardando envio</span> — agendado para daqui ${diff} min`;
+                }
+                return `${ordinal} orçamento: <span class="status-pending">⏳ Processando envio...</span>`;
+            }
+            case 'email_sent': {
+                const sentAt = meta.sent_at ? formatActivityDate(meta.sent_at) : '';
+                const company = meta.company_name ? ` via ${escapeHtml(meta.company_name)}` : '';
+                return `${ordinal} orçamento: <span class="status-sent">✅ Enviado</span>${company} em ${sentAt}`;
+            }
+            case 'email_failed': {
+                const err = meta.error ? ` — ${escapeHtml(meta.error)}` : '';
+                return `${ordinal} orçamento: <span class="status-failed">❌ Falhou</span>${err}`;
+            }
+            default: return `${ordinal} orçamento: ${c.type}`;
+        }
+    }
+
+    function formatActivityDate(dateStr) {
+        const d = new Date(dateStr);
+        return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
     // ══════════════════════════════════════════════════════════
