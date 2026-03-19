@@ -169,13 +169,13 @@ orcamentosRouter.post('/save', async (req, res) => {
 
             if (items.length > 0) {
                 const itemsToInsert = items
-                    .filter((item: any) => item.descricao)
+                    .filter((item: any) => item.descricao || item.valor_compra || item.valor_venda)
                     .map((item: any) => ({
                         orcamento_id,
                         codigo: item.codigo ? Number.parseInt(item.codigo) : null,
-                        descricao: item.descricao,
-                        quantidade: item.quantidade,
-                        valor_compra: item.valor_compra,
+                        descricao: item.descricao || '',
+                        quantidade: item.quantidade || '1',
+                        valor_compra: item.valor_compra || '0',
                         valor_venda: item.valor_venda || null,
                         auto_preco: item.auto_preco === '1' ? 1 : 0,
                         marca_modelo: item.marca_modelo || null,

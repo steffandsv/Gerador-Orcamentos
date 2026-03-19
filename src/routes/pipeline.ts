@@ -282,6 +282,70 @@ pipelineRouter.get('/api/pipeline/cards/:id/stats', async (req: Request, res: Re
     }
 });
 
+// ── GET /api/pipeline/cards/:id/validate-items — Check if all items have required fields ──
+pipelineRouter.get('/api/pipeline/cards/:id/validate-items', async (req: Request, res: Response) => {
+    try {
+        const cardId = Number(req.params.id);
+
+        const items = await db.select().from(itens_orcamento)
+            .where(eq(itens_orcamento.orcamento_id, cardId));
+
+        if (items.length === 0) {
+            return res.json({ valid: false, message: 'O orçamento não possui itens.', incomplete_items: [] });
+        }
+
+        const requiredFields = ['descricao', 'quantidade', 'valor_compra', 'valor_venda', 'marca_modelo'] as const;
+        const fieldLabels: Record<string, string> = {
+            descricao: 'Descrição',
+            quantidade: 'Quantidade',
+            valor_compra: 'V. Compra',
+            valor_venda: 'V. Venda',
+            marca_modelo: 'Marca/Modelo',
+        };
+
+        const incompleteItems: { index: number; codigo: number | null; descricao: string; missing_fields: string[] }[] = [];
+
+        items.forEach((item, idx) => {
+            const missing: string[] = [];
+            for (const field of requiredFields) {
+                const val = item[field];
+                if (val === null || val === undefined || String(val).trim() === '' || String(val).trim() === '0') {
+                    // Allow quantidade / valor_compra = 0 only if truly empty
+                    if ((field === 'quantidade' || field === 'valor_compra') && val !== null && val !== undefined && String(val).trim() !== '') {
+                        continue;
+                    }
+                    missing.push(fieldLabels[field]);
+                }
+            }
+            if (missing.length > 0) {
+                incompleteItems.push({
+                    index: idx + 1,
+                    codigo: item.codigo,
+                    descricao: item.descricao || '(sem descrição)',
+                    missing_fields: missing,
+                });
+            }
+        });
+
+        if (incompleteItems.length > 0) {
+            const summary = incompleteItems.map(i =>
+                `Item ${i.index} (${i.descricao}): falta ${i.missing_fields.join(', ')}`
+            ).join('\n');
+
+            return res.json({
+                valid: false,
+                message: `${incompleteItems.length} item(ns) com campos incompletos:\n${summary}`,
+                incomplete_items: incompleteItems,
+            });
+        }
+
+        res.json({ valid: true, message: 'Todos os itens estão completos.', incomplete_items: [] });
+    } catch (e) {
+        console.error('Validate items error:', e);
+        res.status(500).json({ valid: false, message: 'Erro ao validar itens.' });
+    }
+});
+
 // ── GET /api/pipeline/cards/:id/detail — Single card detail for validation ──
 pipelineRouter.get('/api/pipeline/cards/:id/detail', async (req: Request, res: Response) => {
     try {

@@ -7,6 +7,7 @@ dotenv.config();
 
 import { empresasRouter } from './routes/empresas';
 import { orcamentosRouter } from './routes/orcamentos';
+import { orcamentosApiRouter } from './routes/orcamentos-api';
 import { printRouter } from './routes/print';
 import { apiRouter } from './routes/api';
 import { authRouter } from './routes/auth';
@@ -57,6 +58,7 @@ app.use('/empresas', empresasRouter);
 app.use('/orcamentos', orcamentosRouter);
 app.use('/print', printRouter);
 app.use('/api', apiRouter);
+app.use('/api', orcamentosApiRouter);
 app.use('/usuarios', usuariosRouter);
 app.use('/auditoria', auditRouter);
 app.use(pipelineRouter);

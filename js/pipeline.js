@@ -651,6 +651,14 @@
         if (!activeCardId) return;
 
         try {
+            // Validate items completeness first
+            const validateRes = await fetch(`/api/pipeline/cards/${activeCardId}/validate-items`);
+            const validation = await validateRes.json();
+            if (!validation.valid) {
+                alert('⚠️ ' + validation.message);
+                return;
+            }
+
             // Validate stats
             const statsRes = await fetch(`/api/pipeline/cards/${activeCardId}/stats`);
             const stats = await statsRes.json();

@@ -79,6 +79,158 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ========================================================================
+    // AUTO-SAVE HELPERS
+    // ========================================================================
+
+    let _currentOrcamentoId = null;
+    const _quoteIdInput = document.querySelector('input[name="quote_id"]');
+    if (_quoteIdInput) _currentOrcamentoId = _quoteIdInput.value;
+
+    let _saveDebounceTimers = {};
+    let _headerSaveTimer = null;
+
+    function showRowSaveStatus(tr, status) {
+        let badge = tr.querySelector('.row-save-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'row-save-badge';
+            const actionsCell = tr.querySelector('.cell-actions');
+            if (actionsCell) actionsCell.insertBefore(badge, actionsCell.firstChild);
+        }
+        if (status === 'saving') {
+            badge.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="color:#94a3b8;font-size:0.7rem;"></i>';
+            badge.style.opacity = '1';
+        } else if (status === 'saved') {
+            badge.innerHTML = '<i class="fas fa-check" style="color:#22c55e;font-size:0.7rem;"></i>';
+            badge.style.opacity = '1';
+            setTimeout(() => { badge.style.opacity = '0'; }, 2000);
+        } else if (status === 'error') {
+            badge.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#ef4444;font-size:0.7rem;"></i>';
+            badge.style.opacity = '1';
+        }
+    }
+
+    function showHeaderSaveStatus(status) {
+        let badge = document.getElementById('headerSaveBadge');
+        if (!badge) {
+            const heading = document.querySelector('h2');
+            if (heading) {
+                badge = document.createElement('span');
+                badge.id = 'headerSaveBadge';
+                badge.style.cssText = 'margin-left:10px;font-size:0.75rem;transition:opacity 0.3s;';
+                heading.appendChild(badge);
+            }
+        }
+        if (!badge) return;
+        if (status === 'saving') {
+            badge.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="color:#94a3b8;"></i> Salvando...';
+            badge.style.opacity = '1';
+        } else if (status === 'saved') {
+            badge.innerHTML = '<i class="fas fa-check" style="color:#22c55e;"></i> Salvo';
+            badge.style.opacity = '1';
+            setTimeout(() => { badge.style.opacity = '0'; }, 2500);
+        } else if (status === 'error') {
+            badge.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> Erro';
+            badge.style.opacity = '1';
+        }
+    }
+
+    async function autoSaveItemField(tr, fieldName, value) {
+        const itemId = tr.dataset.itemId;
+        if (!_currentOrcamentoId || !itemId) return;
+
+        showRowSaveStatus(tr, 'saving');
+        try {
+            const resp = await fetch(`/api/orcamentos/${_currentOrcamentoId}/items/${itemId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [fieldName]: value }),
+            });
+            if (resp.ok) {
+                showRowSaveStatus(tr, 'saved');
+            } else {
+                showRowSaveStatus(tr, 'error');
+            }
+        } catch (e) {
+            console.error('Auto-save item error:', e);
+            showRowSaveStatus(tr, 'error');
+        }
+    }
+
+    async function autoSaveHeader(field, value) {
+        if (!_currentOrcamentoId) return;
+        showHeaderSaveStatus('saving');
+        try {
+            const resp = await fetch(`/api/orcamentos/${_currentOrcamentoId}/header`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: value }),
+            });
+            if (resp.ok) {
+                showHeaderSaveStatus('saved');
+            } else {
+                showHeaderSaveStatus('error');
+            }
+        } catch (e) {
+            console.error('Auto-save header error:', e);
+            showHeaderSaveStatus('error');
+        }
+    }
+
+    async function autoCreateItem(tr, data) {
+        if (!_currentOrcamentoId) return;
+        showRowSaveStatus(tr, 'saving');
+        try {
+            const resp = await fetch(`/api/orcamentos/${_currentOrcamentoId}/items`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            const json = await resp.json();
+            if (json.success && json.item_id) {
+                tr.dataset.itemId = json.item_id;
+                showRowSaveStatus(tr, 'saved');
+            } else {
+                showRowSaveStatus(tr, 'error');
+            }
+        } catch (e) {
+            console.error('Auto-create item error:', e);
+            showRowSaveStatus(tr, 'error');
+        }
+    }
+
+    // ========================================================================
+    // HEADER AUTO-SAVE — attach blur to header fields
+    // ========================================================================
+    if (_currentOrcamentoId) {
+        const headerFields = [
+            { el: 'titulo', field: 'titulo' },
+            { el: 'solicitante_nome', field: 'solicitante_nome' },
+            { el: 'solicitante_cnpj', field: 'solicitante_cnpj' },
+            { el: 'variacao_maxima', field: 'variacao_maxima' },
+        ];
+        headerFields.forEach(({ el, field }) => {
+            const input = document.getElementById(el);
+            if (input) {
+                input.addEventListener('blur', () => {
+                    if (_headerSaveTimer) clearTimeout(_headerSaveTimer);
+                    _headerSaveTimer = setTimeout(() => autoSaveHeader(field, input.value), 300);
+                });
+            }
+        });
+
+        // Selects (empresa + template)
+        ['empresa1_id', 'empresa2_id', 'empresa3_id'].forEach(field => {
+            const sel = document.getElementById(field);
+            if (sel) {
+                sel.addEventListener('change', () => {
+                    autoSaveHeader(field, sel.value);
+                });
+            }
+        });
+    }
+
+    // ========================================================================
     // ITEMS TABLE
     // ========================================================================
 
@@ -104,10 +256,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 const autoPreco = data.auto_preco == 1 || data.auto_preco === true;
                 const marca = data.marca_modelo || '';
                 const link = data.link_compra || '';
+                const dbItemId = data.id || null;
+
+                // Calculate predicted price for display
+                const compraFloat = parseFloat(vCompra);
+                const predictedPrice = compraFloat > 0 ? calcularPrecoVenda(compraFloat) : null;
 
                 const tr = document.createElement('tr');
                 tr.className = 'rich-row';
                 tr.dataset.idx = idx;
+                if (dbItemId) tr.dataset.itemId = dbItemId;
 
                 tr.innerHTML = `
                     <td class="cell-codigo">
@@ -115,22 +273,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td class="cell-desc">
                         <div class="desc-wrapper">
-                            <textarea name="items[${idx}][descricao]" placeholder="Descrição do item" class="input-desc" rows="1" required>${desc}</textarea>
+                            <textarea name="items[${idx}][descricao]" placeholder="Descrição do item" class="input-desc" rows="1">${desc}</textarea>
                             <button type="button" class="btn-expand-desc" title="Expandir Descrição">
                                 <i class="fas fa-expand-arrows-alt"></i>
                             </button>
                         </div>
                     </td>
                     <td class="cell-qty">
-                        <input type="number" name="items[${idx}][quantidade]" value="${qty}" step="0.01" min="0.01" placeholder="1" class="input-qty" required>
+                        <input type="number" name="items[${idx}][quantidade]" value="${qty}" step="0.01" min="0.01" placeholder="1" class="input-qty">
                     </td>
                     <td class="cell-compra">
                         <div class="input-money-wrapper">
                             <span class="money-prefix">R$</span>
-                            <input type="number" name="items[${idx}][valor_compra]" value="${vCompra}" step="0.01" min="0.01" placeholder="0,00" class="input-compra" required>
+                            <input type="number" name="items[${idx}][valor_compra]" value="${vCompra}" step="0.01" min="0.01" placeholder="0,00" class="input-compra">
                         </div>
                     </td>
                     <td class="cell-venda">
+                        <span class="predicted-price" title="Valor previsto pelo motor de precificação">${predictedPrice ? 'Previsto: R$ ' + predictedPrice.toFixed(2).replace('.', ',') : ''}</span>
                         <div class="venda-group">
                             <div class="input-money-wrapper">
                                 <span class="money-prefix">R$</span>
@@ -317,6 +476,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 // Real-time recalc on inputs
+                const predictedSpan = tr.querySelector('.predicted-price');
+
+                function updatePredictedPrice() {
+                    const c = parseFloat(compraInput.value);
+                    if (c > 0) {
+                        const pp = calcularPrecoVenda(c);
+                        if (pp !== null) {
+                            predictedSpan.textContent = 'Previsto: R$ ' + pp.toFixed(2).replace('.', ',');
+                        } else {
+                            predictedSpan.textContent = '';
+                        }
+                    } else {
+                        predictedSpan.textContent = '';
+                    }
+                }
+
                 compraInput.addEventListener('input', function() {
                     if (autoBtn.classList.contains('active')) {
                         const compra = parseFloat(this.value);
@@ -327,6 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             vendaInput.value = '';
                         }
                     }
+                    updatePredictedPrice();
                     updateMetrics(tr, metricsRow);
                     updateSummary();
                 });
@@ -340,6 +516,43 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateMetrics(tr, metricsRow);
                     updateSummary();
                 });
+
+                // ── Auto-save on blur ──
+                function getRowData() {
+                    return {
+                        codigo: tr.querySelector('.input-codigo').value,
+                        descricao: tr.querySelector('.input-desc').value,
+                        quantidade: tr.querySelector('.input-qty').value,
+                        valor_compra: compraInput.value,
+                        valor_venda: vendaInput.value,
+                        auto_preco: hiddenAuto.value,
+                        marca_modelo: tr.querySelector('.input-marca').value,
+                        link_compra: tr.querySelector('.input-link').value,
+                    };
+                }
+
+                function handleFieldBlur(fieldName, inputEl) {
+                    if (!_currentOrcamentoId) return;
+                    const key = idx + '_' + fieldName;
+                    if (_saveDebounceTimers[key]) clearTimeout(_saveDebounceTimers[key]);
+                    _saveDebounceTimers[key] = setTimeout(() => {
+                        if (tr.dataset.itemId) {
+                            autoSaveItemField(tr, fieldName, inputEl.value);
+                        } else {
+                            // Create item first
+                            autoCreateItem(tr, getRowData());
+                        }
+                    }, 300);
+                }
+
+                // Attach blur to all fields
+                tr.querySelector('.input-codigo').addEventListener('blur', function() { handleFieldBlur('codigo', this); });
+                tr.querySelector('.input-desc').addEventListener('blur', function() { handleFieldBlur('descricao', this); });
+                tr.querySelector('.input-qty').addEventListener('blur', function() { handleFieldBlur('quantidade', this); });
+                compraInput.addEventListener('blur', function() { handleFieldBlur('valor_compra', this); });
+                vendaInput.addEventListener('blur', function() { handleFieldBlur('valor_venda', this); });
+                tr.querySelector('.input-marca').addEventListener('blur', function() { handleFieldBlur('marca_modelo', this); });
+                tr.querySelector('.input-link').addEventListener('blur', function() { handleFieldBlur('link_compra', this); });
 
                 // Initial metrics if editing
                 if (vCompra && vVenda) {
@@ -434,26 +647,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
             addItemBtn.addEventListener('click', () => createRow());
 
-            tableBody.addEventListener('click', function(e) {
+            tableBody.addEventListener('click', async function(e) {
                 if (e.target.closest('.remove-row')) {
                     const tr = e.target.closest('tr');
+                    const itemId = tr.dataset.itemId;
                     const metricsRow = tr.nextElementSibling;
                     if (metricsRow && metricsRow.classList.contains('metrics-row')) {
                         metricsRow.remove();
                     }
                     tr.remove();
                     updateSummary();
+
+                    // Auto-delete from backend
+                    if (_currentOrcamentoId && itemId) {
+                        try {
+                            await fetch(`/api/orcamentos/${_currentOrcamentoId}/items/${itemId}`, { method: 'DELETE' });
+                        } catch (e) {
+                            console.error('Delete item error:', e);
+                        }
+                    }
                 }
             });
 
-            // Form Submit Validation
+            // Form Submit — allow saving without filling everything
             const form = document.getElementById('quoteForm');
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    const rows = tableBody.querySelectorAll('.rich-row');
-                    if (rows.length === 0) {
+                    // Only title is truly required
+                    const titulo = document.getElementById('titulo');
+                    if (titulo && !titulo.value.trim()) {
                         e.preventDefault();
-                        showAlert('Adicione pelo menos um item ao orçamento.', 'Erro', 'error');
+                        showAlert('O título do orçamento é obrigatório.', 'Erro', 'error');
                     }
                 });
             }

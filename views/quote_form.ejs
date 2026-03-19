@@ -38,7 +38,7 @@
         q_tpl2 = quote_edit.template2_id;
         q_tpl3 = quote_edit.template3_id;
         
-        items_json = JSON.stringify(items_edit);
+        items_json = JSON.stringify(items_edit.map(function(it) { return { id: it.id, codigo: it.codigo, descricao: it.descricao, quantidade: it.quantidade, valor_compra: it.valor_compra, valor_venda: it.valor_venda, auto_preco: it.auto_preco, marca_modelo: it.marca_modelo, link_compra: it.link_compra }; }));
         page_title = "Editar Orçamento #" + q_id;
     } else {
         q_id = '';
@@ -71,20 +71,20 @@
             <div class="flex-col">
                 <label for="solicitante_nome">Nome do Solicitante:</label>
                 <div class="autocomplete-container">
-                    <input type="text" id="solicitante_nome" name="solicitante_nome" required value="<%= q_sol_nome %>" placeholder="Ex: Prefeitura Municipal de X" autocomplete="off">
+                    <input type="text" id="solicitante_nome" name="solicitante_nome" value="<%= q_sol_nome %>" placeholder="Ex: Prefeitura Municipal de X" autocomplete="off">
                     <div id="solicitante_list_container" class="autocomplete-list"></div>
                 </div>
             </div>
              <div class="flex-col">
                 <label for="solicitante_cnpj">CNPJ do Solicitante:</label>
-                <input type="text" id="solicitante_cnpj" name="solicitante_cnpj" value="<%= q_sol_cnpj %>" required placeholder="Ex: 00.000.000/0001-00">
+                <input type="text" id="solicitante_cnpj" name="solicitante_cnpj" value="<%= q_sol_cnpj %>" placeholder="Ex: 00.000.000/0001-00">
             </div>
         </div>
 
         <div class="flex-row" style="align-items: flex-start;">
             <div class="flex-col">
                 <label for="empresa1_id">Empresa Vencedora (Menor Preço):</label>
-                <select name="empresa1_id" id="empresa1_id" class="company-select" required>
+                <select name="empresa1_id" id="empresa1_id" class="company-select">
                     <option value="">Selecione...</option>
                     <% empresas.forEach(function(emp) { %>
                         <option value="<%= emp.id %>" <%= emp.id == q_emp1 ? 'selected' : '' %>><%= emp.nome %></option>
@@ -96,7 +96,7 @@
             </div>
             <div class="flex-col">
                 <label for="empresa2_id">Empresa 2 (Orçamento Superior):</label>
-                <select name="empresa2_id" id="empresa2_id" class="company-select" required>
+                <select name="empresa2_id" id="empresa2_id" class="company-select">
                     <option value="">Selecione...</option>
                     <% empresas.forEach(function(emp) { %>
                         <option value="<%= emp.id %>" <%= emp.id == q_emp2 ? 'selected' : '' %>><%= emp.nome %></option>
@@ -108,7 +108,7 @@
             </div>
             <div class="flex-col">
                 <label for="empresa3_id">Empresa 3 (Orçamento Superior):</label>
-                <select name="empresa3_id" id="empresa3_id" class="company-select" required>
+                <select name="empresa3_id" id="empresa3_id" class="company-select">
                     <option value="">Selecione...</option>
                     <% empresas.forEach(function(emp) { %>
                         <option value="<%= emp.id %>" <%= emp.id == q_emp3 ? 'selected' : '' %>><%= emp.nome %></option>
@@ -121,7 +121,7 @@
         </div>
 
         <label for="variacao_maxima" style="margin-top: 15px;">Variação Máxima (%) para os outros orçamentos:</label>
-        <input type="number" name="variacao_maxima" value="<%= q_var %>" min="1" max="100" required step="0.1">
+        <input type="number" name="variacao_maxima" value="<%= q_var %>" min="1" max="100" step="0.1">
         <small style="display:block; margin-top:-10px; margin-bottom:15px; color:#666;">
             Os preços das empresas 2 e 3 serão aleatoriamente maiores entre 1% e X% em relação à vencedora.
         </small>

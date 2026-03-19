@@ -90,6 +90,22 @@ async function sendEmails() {
     const status = document.getElementById('statusMsg');
     
     btn.disabled = true;
+    btn.innerText = 'Validando...';
+
+    try {
+        // Validate items completeness first
+        const validateRes = await fetch(`/api/pipeline/cards/${id}/validate-items`);
+        const validation = await validateRes.json();
+        if (!validation.valid) {
+            alert('⚠️ ' + validation.message);
+            btn.disabled = false;
+            btn.innerText = 'Enviar Orçamentos';
+            return;
+        }
+    } catch(e) {
+        console.error('Validation error:', e);
+    }
+
     btn.innerText = 'Processando...';
     status.style.display = 'block';
     status.innerText = 'Iniciando processo...';
