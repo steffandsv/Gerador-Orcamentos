@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let _saveDebounceTimers = {};
     let _headerSaveTimer = null;
+    let _creatingItemForRow = {}; // Guard: prevent duplicate create calls per row
 
     function showRowSaveStatus(tr, status) {
         let badge = tr.querySelector('.row-save-badge');
@@ -179,6 +180,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function autoCreateItem(tr, data) {
         if (!_currentOrcamentoId) return;
+        const rowIdx = tr.dataset.idx;
+        // Prevent duplicate creation for the same row
+        if (_creatingItemForRow[rowIdx]) return;
+        _creatingItemForRow[rowIdx] = true;
         showRowSaveStatus(tr, 'saving');
         try {
             const resp = await fetch(`/api/orcamentos/${_currentOrcamentoId}/items`, {
@@ -196,6 +201,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             console.error('Auto-create item error:', e);
             showRowSaveStatus(tr, 'error');
+        } finally {
+            delete _creatingItemForRow[rowIdx];
         }
     }
 
@@ -473,6 +480,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     updateMetrics(tr, metricsRow);
                     updateSummary();
+
+                    // Auto-save the toggle state + calculated value
+                    if (_currentOrcamentoId && tr.dataset.itemId) {
+                        autoSaveItemField(tr, 'auto_preco', hiddenAuto.value);
+                        if (isActive) {
+                            autoSaveItemField(tr, 'valor_venda', vendaInput.value);
+                        }
+                    }
                 });
 
                 // Real-time recalc on inputs
