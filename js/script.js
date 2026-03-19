@@ -673,10 +673,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('quoteForm');
             if (form) {
                 form.addEventListener('submit', function(e) {
+                    // ── CRITICAL: Cancel all pending auto-saves to prevent race condition ──
+                    // When clicking Save, blur fires first → starts debounce timer →
+                    // form submits → server deletes+reinserts items → then the debounced
+                    // auto-save arrives and creates a DUPLICATE. Fix: kill all timers.
+                    Object.keys(_saveDebounceTimers).forEach(key => {
+                        clearTimeout(_saveDebounceTimers[key]);
+                    });
+                    _saveDebounceTimers = {};
+                    if (_headerSaveTimer) {
+                        clearTimeout(_headerSaveTimer);
+                        _headerSaveTimer = null;
+                    }
+                    _currentOrcamentoId = null; // Prevent any new auto-saves from firing
+
                     // Only title is truly required
                     const titulo = document.getElementById('titulo');
                     if (titulo && !titulo.value.trim()) {
                         e.preventDefault();
+                        // Restore auto-save since we're staying on the page
+                        _currentOrcamentoId = _quoteIdInput ? _quoteIdInput.value : null;
                         showAlert('O título do orçamento é obrigatório.', 'Erro', 'error');
                     }
                 });
