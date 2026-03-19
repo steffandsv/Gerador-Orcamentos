@@ -768,6 +768,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 return result;
             }
 
+            function looksLikePrice(val) {
+                const cleaned = val.replace(/[R$\s]/g, '');
+                return /^\d+([.,]\d{1,2})?$/.test(cleaned) && cleaned.length > 0;
+            }
+
+            function looksLikeCode(val) {
+                return /^\d+$/.test(val.trim()) && val.trim().length <= 10;
+            }
+
+            function cleanNumber(val) {
+                return val.trim().replace(/[^\d.,]/g, '').replace(',', '.');
+            }
+
             function processImportContent(text) {
                 if (!window.createRow || !tableBody) return;
                 
@@ -783,34 +796,60 @@ document.addEventListener('DOMContentLoaded', function() {
                 lines.forEach((line, index) => {
                     if (!line.trim()) return;
                     const lineLower = line.toLowerCase();
-                    if (index === 0 && (lineLower.includes('desc') || lineLower.includes('qty') || lineLower.includes('pre') || lineLower.includes('quant'))) {
+                    if (index === 0 && (lineLower.includes('desc') || lineLower.includes('qty') || lineLower.includes('pre') || lineLower.includes('quant') || lineLower.includes('cód') || lineLower.includes('cod') || lineLower.includes('valor'))) {
                          return;
                     }
                     
                     const parts = parseCSVLine(line, delimiter);
-                    if (parts.length >= 2) {
-                        let desc = parts[0].trim();
-                        let qty = '1', vCompra = '0', marca = '';
+                    if (parts.length < 2) return;
 
-                        if (parts.length >= 4) {
-                            qty = parts[1].trim().replace(',', '.');
-                            vCompra = parts[2].trim().replace(/[^\d.,]/g, '').replace(',', '.');
-                            marca = parts[3].trim();
-                        } else if (parts.length >= 3) {
-                            qty = parts[1].trim().replace(',', '.');
-                            vCompra = parts[2].trim().replace(/[^\d.,]/g, '').replace(',', '.');
+                    let codigo = '', desc = '', qty = '1', vCompra = '0';
+
+                    if (parts.length >= 4) {
+                        // Format: Código;Descrição;Quantidade;Valor
+                        codigo = parts[0].trim();
+                        desc = parts[1].trim();
+                        qty = cleanNumber(parts[2]) || '1';
+                        vCompra = cleanNumber(parts[3]) || '0';
+                    } else if (parts.length === 3) {
+                        // Could be: Código;Descrição;Valor  OR  Descrição;Quantidade;Valor
+                        if (looksLikeCode(parts[0]) && !looksLikePrice(parts[1])) {
+                            // Código;Descrição;Valor (quantity missing)
+                            codigo = parts[0].trim();
+                            desc = parts[1].trim();
+                            qty = '1';
+                            vCompra = cleanNumber(parts[2]) || '0';
+                        } else if (!looksLikeCode(parts[0])) {
+                            // Descrição;Quantidade;Valor
+                            desc = parts[0].trim();
+                            qty = cleanNumber(parts[1]) || '1';
+                            vCompra = cleanNumber(parts[2]) || '0';
                         } else {
-                            qty = parts[1].trim().replace(',', '.');
+                            // Fallback: treat as Código;Descrição;Valor
+                            codigo = parts[0].trim();
+                            desc = parts[1].trim();
+                            vCompra = cleanNumber(parts[2]) || '0';
                         }
-
-                        createRow({
-                            descricao: desc,
-                            quantidade: qty,
-                            valor_compra: vCompra,
-                            marca_modelo: marca
-                        });
-                        addedCount++;
+                    } else if (parts.length === 2) {
+                        // Descrição;Valor or Código;Descrição
+                        if (looksLikePrice(parts[1])) {
+                            desc = parts[0].trim();
+                            vCompra = cleanNumber(parts[1]) || '0';
+                        } else {
+                            codigo = parts[0].trim();
+                            desc = parts[1].trim();
+                        }
                     }
+
+                    if (!desc) return;
+
+                    createRow({
+                        codigo: codigo ? parseInt(codigo) : undefined,
+                        descricao: desc,
+                        quantidade: qty,
+                        valor_compra: vCompra,
+                    });
+                    addedCount++;
                 });
 
                 if (addedCount > 0) {

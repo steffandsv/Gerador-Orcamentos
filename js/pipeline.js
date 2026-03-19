@@ -979,10 +979,27 @@
 
         const lines = csvText.split('\n').filter(l => l.trim());
         const items = [];
-        for (const line of lines) {
+        for (let li = 0; li < lines.length; li++) {
+            const line = lines[li];
+            // Skip header row
+            if (li === 0) {
+                const lower = line.toLowerCase();
+                if (lower.includes('desc') || lower.includes('quant') || lower.includes('cód') || lower.includes('cod') || lower.includes('valor') || lower.includes('pre')) continue;
+            }
             const parts = line.split(';').map(p => p.trim());
-            if (parts.length >= 4) items.push({ codigo: parts[0], descricao: parts[1], quantidade: parts[2], valor_venda: parts[3] });
-            else if (parts.length >= 3) items.push({ codigo: '', descricao: parts[0], quantidade: parts[1], valor_venda: parts[2] });
+            if (parts.length >= 4) {
+                items.push({ codigo: parts[0], descricao: parts[1], quantidade: parts[2] || '1', valor_venda: parts[3] });
+            } else if (parts.length === 3) {
+                // Could be Código;Descrição;Valor (no qty) or Descrição;Quantidade;Valor
+                if (/^\d+$/.test(parts[0]) && !/^\d+([.,]\d{1,2})?$/.test(parts[1])) {
+                    // Código;Descrição;Valor — quantity missing
+                    items.push({ codigo: parts[0], descricao: parts[1], quantidade: '1', valor_venda: parts[2] });
+                } else {
+                    items.push({ codigo: '', descricao: parts[0], quantidade: parts[1] || '1', valor_venda: parts[2] });
+                }
+            } else if (parts.length === 2) {
+                items.push({ codigo: '', descricao: parts[0], quantidade: '1', valor_venda: parts[1] });
+            }
         }
         if (items.length === 0) { status.textContent = '⚠️ Nenhum item válido'; return; }
 
