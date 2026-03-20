@@ -19,7 +19,7 @@ function broadcastSSE(event: string, data: any) {
 }
 
 // ── Constants ──
-const STAGES = ['inbox', 'cotacao', 'revisao', 'enviados'] as const;
+const STAGES = ['inbox', 'cotacao', 'revisao', 'enviados', 'lixeira'] as const;
 type Stage = typeof STAGES[number];
 
 const STAGE_META: Record<Stage, { label: string; icon: string }> = {
@@ -27,6 +27,7 @@ const STAGE_META: Record<Stage, { label: string; icon: string }> = {
     cotacao: { label: 'Em Cotação', icon: '⚡' },
     revisao: { label: 'Revisão', icon: '🔍' },
     enviados: { label: 'Enviados', icon: '✅' },
+    lixeira: { label: 'Lixeira', icon: '🗑️' },
 };
 
 // ── GET /pipeline — Render Pipeline Board ──
@@ -67,7 +68,7 @@ pipelineRouter.get('/api/pipeline/cards', async (req: Request, res: Response) =>
         .from(orcamentos)
         .where(and(
             isNull(orcamentos.deleted_at),
-            sql`stage != 'enviados'`,
+            sql`stage NOT IN ('enviados', 'lixeira')`,
         ))
         .orderBy(asc(orcamentos.position));
 
@@ -415,6 +416,65 @@ pipelineRouter.patch('/api/pipeline/cards/:id/move', async (req: Request, res: R
     } catch (e) {
         console.error('Move card error:', e);
         res.status(500).json({ error: 'Failed to move card' });
+    }
+});
+
+// ── PATCH /api/pipeline/cards/:id/trash — Move card to trash with reason ──
+pipelineRouter.patch('/api/pipeline/cards/:id/trash', async (req: Request, res: Response) => {
+    try {
+        const currentUser = res.locals.currentUser;
+        const cardId = Number(req.params.id);
+        const { reason } = req.body;
+
+        const [existing] = await db.select().from(orcamentos).where(eq(orcamentos.id, cardId));
+        if (!existing) return res.status(404).json({ error: 'Card not found' });
+
+        const oldStage = existing.stage;
+
+        // Soft-delete: set deleted_at and move to lixeira stage
+        await db.update(orcamentos).set({
+            stage: 'lixeira',
+            deleted_at: new Date(),
+            deleted_by: currentUser.id,
+            updated_by: currentUser.id,
+            updated_at: new Date(),
+        }).where(eq(orcamentos.id, cardId));
+
+        // Save reason as a comment
+        if (reason && reason.trim()) {
+            await db.insert(comments).values({
+                orcamento_id: cardId,
+                user_id: currentUser.id,
+                body: `🗑️ **Motivo da exclusão:** ${reason.trim()}`,
+            });
+        }
+
+        // Log audit
+        await logAudit({
+            userId: currentUser.id,
+            username: currentUser.username,
+            action: 'trash_card',
+            entity: 'orcamento',
+            entityId: cardId,
+            details: `Card "${existing.titulo}" enviado para lixeira de ${oldStage}. Motivo: ${reason || '(sem motivo)'}`,
+            oldData: { stage: oldStage },
+            newData: { stage: 'lixeira' },
+            ipAddress: req.ip ?? null,
+        });
+
+        // Log activity
+        await logActivity({
+            orcamentoId: cardId,
+            userId: currentUser.id,
+            type: 'trashed',
+            metadata: { from_stage: oldStage, reason: reason?.trim() || null },
+        });
+
+        broadcastSSE('card_moved', { cardId, stage: 'lixeira', movedBy: currentUser.username });
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Trash card error:', e);
+        res.status(500).json({ error: 'Failed to trash card' });
     }
 });
 

@@ -1637,6 +1637,30 @@ tbody tr:hover {
     padding: 12px;
 }
 
+/* ── Lixeira Column ── */
+.lixeira-column {
+    max-width: 200px;
+    min-width: 160px;
+}
+
+.lixeira-column .column-header {
+    border-bottom-color: #fecaca;
+}
+
+.lixeira-drop-zone {
+    min-height: 100px;
+    border: 2px dashed transparent;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lixeira-drop-zone.drag-over {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05) !important;
+}
+
 .enviados-glance {
     display: grid;
     grid-template-columns: 1fr;

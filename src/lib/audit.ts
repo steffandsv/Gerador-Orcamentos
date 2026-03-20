@@ -17,7 +17,8 @@ export type AuditAction =
   | 'add_label'
   | 'email_requested'
   | 'email_queued'
-  | 'pdf_generated';
+  | 'pdf_generated'
+  | 'trash_card';
 
 export async function logAudit(params: {
   userId: number;

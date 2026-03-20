@@ -45,9 +45,10 @@
         q_titulo = '';
         q_sol_nome = '';
         q_sol_cnpj = '';
-        q_emp1 = '';
-        q_emp2 = '';
-        q_emp3 = '';
+        q_emp1 = '1';
+        var _randEmp2 = Math.random() < 0.5 ? '2' : '3';
+        q_emp2 = _randEmp2;
+        q_emp3 = _randEmp2 === '2' ? '3' : '2';
         q_var = '10';
         q_tpl1 = '1';
         q_tpl2 = '2';

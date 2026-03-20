@@ -285,6 +285,60 @@
         const card = allCards.find(c => c.id === cardId);
         if (!card || card.stage === targetStage) return;
 
+        // ── Lixeira: ask for reason before trashing ──
+        if (targetStage === 'lixeira') {
+            if (typeof Swal === 'undefined') {
+                const reason = prompt('Por que está enviando para a lixeira?');
+                if (reason === null) return; // cancelled
+                allCards = allCards.filter(c => c.id !== cardId);
+                renderBoard();
+                try {
+                    await fetch(`/api/pipeline/cards/${cardId}/trash`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reason }),
+                    });
+                } catch (err) {
+                    console.error('Trash failed:', err);
+                    loadCards();
+                }
+                return;
+            }
+
+            const { isConfirmed, value: reason } = await Swal.fire({
+                title: '🗑️ Enviar para Lixeira',
+                text: 'Por que está enviando este card para a lixeira?',
+                input: 'textarea',
+                inputPlaceholder: 'Motivo da exclusão...',
+                inputAttributes: { 'aria-label': 'Motivo' },
+                showCancelButton: true,
+                confirmButtonText: 'Enviar para Lixeira',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#ef4444',
+                inputValidator: (value) => {
+                    if (!value || !value.trim()) return 'Por favor, informe o motivo.';
+                },
+            });
+
+            if (!isConfirmed) return; // cancelled — card stays
+
+            // Optimistic UI removal
+            allCards = allCards.filter(c => c.id !== cardId);
+            renderBoard();
+
+            try {
+                await fetch(`/api/pipeline/cards/${cardId}/trash`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason }),
+                });
+            } catch (err) {
+                console.error('Trash failed:', err);
+                loadCards(); // rollback
+            }
+            return;
+        }
+
         if (targetStage === 'enviados') {
             allCards = allCards.filter(c => c.id !== cardId);
             renderBoard();
