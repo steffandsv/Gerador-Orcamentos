@@ -1637,18 +1637,13 @@ tbody tr:hover {
     padding: 12px;
 }
 
-/* ── Lixeira Column ── */
-.lixeira-column {
-    max-width: 200px;
-    min-width: 160px;
-}
-
-.lixeira-column .column-header {
-    border-bottom-color: #fecaca;
+/* ── Lixeira (within Enviados column) ── */
+.lixeira-header {
+    border-radius: 8px 8px 0 0;
 }
 
 .lixeira-drop-zone {
-    min-height: 100px;
+    min-height: 80px;
     border: 2px dashed transparent;
     transition: all 0.2s ease;
     display: flex;

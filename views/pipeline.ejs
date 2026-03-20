@@ -47,8 +47,9 @@
     </div>
     <% }); %>
 
-    <!-- Enviados Summary Card -->
+    <!-- Enviados + Lixeira (mesma coluna) -->
     <div class="pipeline-column enviados-summary-column" id="stage-enviados">
+        <!-- Enviados -->
         <div class="column-header">
             <span class="column-icon">✅</span>
             <span class="column-title">Enviados</span>
@@ -64,11 +65,9 @@
                 <p style="color:#94a3b8;font-size:0.78rem;margin-top:4px;">Ao mover para cá, a cotação será registrada como enviada e aparecerá na tabela abaixo para acompanhamento.</p>
             </div>
         </div>
-    </div>
 
-    <!-- Lixeira Drop Zone -->
-    <div class="pipeline-column lixeira-column" id="stage-lixeira">
-        <div class="column-header" style="background: linear-gradient(135deg, #fef2f2, #fee2e2);">
+        <!-- Lixeira (abaixo de Enviados) -->
+        <div class="column-header lixeira-header" style="margin-top:8px; background: linear-gradient(135deg, #fef2f2, #fee2e2);">
             <span class="column-icon">🗑️</span>
             <span class="column-title">Lixeira</span>
         </div>
@@ -79,7 +78,7 @@
             <div class="enviados-drop-message">
                 <i class="fas fa-trash-alt" style="font-size:1.4rem;color:#ef4444;margin-bottom:8px;"></i>
                 <p><strong>Arraste cards aqui</strong></p>
-                <p style="color:#94a3b8;font-size:0.78rem;margin-top:4px;">Ao mover para cá, será solicitado o motivo e a cotação será enviada para a lixeira.</p>
+                <p style="color:#94a3b8;font-size:0.78rem;margin-top:4px;">Será solicitado o motivo e a cotação será enviada para a lixeira.</p>
             </div>
         </div>
     </div>
