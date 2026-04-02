@@ -1,9 +1,14 @@
 import express from 'express';
 import path from 'node:path';
+import fs from 'node:fs';
 import dotenv from 'dotenv';
 import session from 'express-session';
 
 dotenv.config();
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '..', 'uploads', 'docs');
+fs.mkdirSync(uploadsDir, { recursive: true });
 
 import { empresasRouter } from './routes/empresas';
 import { orcamentosRouter } from './routes/orcamentos';

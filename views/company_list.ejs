@@ -11,13 +11,14 @@
             <th>Nome</th>
             <th>Documento</th>
             <th>Email</th>
+            <th>Docs</th>
             <th>Ações</th>
         </tr>
     </thead>
     <tbody>
         <% if ((!empresas || empresas.length === 0)) { %>
         <tr>
-            <td colspan="5" style="text-align:center;">Nenhuma empresa cadastrada.</td>
+            <td colspan="6" style="text-align:center;">Nenhuma empresa cadastrada.</td>
         </tr>
         <% } else { %>
             <% empresas.forEach(function(emp) { %>
@@ -26,6 +27,15 @@
                 <td><%= emp.nome %></td>
                 <td><%= emp.documento %></td>
                 <td><%= emp.email %></td>
+                <td style="text-align:center;">
+                    <% if (emp.doc_original_name) { %>
+                        <span title="<%= emp.doc_original_name %>" style="cursor:help; font-size:1.2em;">
+                            <%= emp.doc_original_name.endsWith('.pdf') ? '📄' : '📦' %>
+                        </span>
+                    <% } else { %>
+                        <span style="color:#ccc;" title="Sem documentação">—</span>
+                    <% } %>
+                </td>
                 <td>
                     <a href="/empresas/form?id=<%= emp.id %>" class="btn btn-small">Editar</a>
                     <form action="/empresas/delete" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza?');">

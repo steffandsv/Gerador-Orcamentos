@@ -45,6 +45,8 @@ export const empresas = mysqlTable('empresas', {
   smtp_user: varchar('smtp_user', { length: 255 }),
   smtp_pass: varchar('smtp_pass', { length: 255 }),
   smtp_secure: varchar('smtp_secure', { length: 20 }),
+  doc_path: varchar('doc_path', { length: 500 }),
+  doc_original_name: varchar('doc_original_name', { length: 255 }),
   created_at: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
   updated_at: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deleted_at: datetime('deleted_at'),

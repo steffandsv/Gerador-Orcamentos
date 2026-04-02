@@ -5,6 +5,8 @@ import { eq, like, sql } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
 import multer from 'multer';
 import { logAudit } from '../lib/audit';
+import path from 'node:path';
+import fs from 'node:fs';
 
 export const apiRouter = Router();
 
@@ -215,15 +217,28 @@ apiRouter.post('/send_budget', pdfFields, async (req, res) => {
                 const pdfBuffer = files[pdfKeys[i]][0].buffer;
                 const safeCompanyName = nome.replace(/[^a-zA-Z0-9]/g, '_');
 
+                // Build attachments: PDF proposal + company documentation (if exists)
+                const attachments: any[] = [{
+                    filename: `orcamento_${safeCompanyName}.pdf`,
+                    content: pdfBuffer
+                }];
+
+                if (company.doc_path) {
+                    const docFullPath = path.join(__dirname, '..', '..', company.doc_path);
+                    if (fs.existsSync(docFullPath)) {
+                        attachments.push({
+                            filename: company.doc_original_name || path.basename(docFullPath),
+                            content: fs.readFileSync(docFullPath),
+                        });
+                    }
+                }
+
                 await transporter.sendMail({
                     from: company.smtp_user,
                     to: recipientEmail,
                     subject,
                     html,
-                    attachments: [{
-                        filename: `orcamento_${safeCompanyName}.pdf`,
-                        content: pdfBuffer
-                    }]
+                    attachments,
                 });
 
                 results.push(`${company.nome}: ✅ Enviado.`);

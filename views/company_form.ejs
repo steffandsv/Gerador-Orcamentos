@@ -1,7 +1,7 @@
 <%- include('layout_header') %>
 <h2><%= empresa.id ? 'Editar' : 'Nova' %> Empresa</h2>
 
-<form action="/empresas/save" method="POST" class="card" id="companyForm">
+<form action="/empresas/save" method="POST" enctype="multipart/form-data" class="card" id="companyForm">
     <% if (empresa.id) { %>
         <input type="hidden" name="id" value="<%= empresa.id %>">
     <% } %>
@@ -42,6 +42,47 @@
         </div>
     </div>
     <input type="hidden" name="detalhes_adicionais" id="detalhes_adicionais">
+
+    <!-- ══════════ Documentação da Empresa ══════════ -->
+    <fieldset class="doc-upload-fieldset">
+        <legend>📎 Documentação da Empresa</legend>
+        <p class="doc-hint">Envie a documentação que será anexada automaticamente nos e-mails de orçamento desta empresa.<br>
+        <strong>Formatos aceitos:</strong> PDF, ZIP, RAR &nbsp;|&nbsp; <strong>Máximo:</strong> 25MB</p>
+
+        <% if (empresa.doc_original_name) { %>
+        <div class="doc-current" id="currentDoc">
+            <div class="doc-current-info">
+                <span class="doc-icon"><%= empresa.doc_original_name.endsWith('.pdf') ? '📄' : '📦' %></span>
+                <div>
+                    <strong><%= empresa.doc_original_name %></strong>
+                    <small style="display:block; color:#888;">Documento atual — será anexado nos e-mails</small>
+                </div>
+            </div>
+            <button type="button" class="btn btn-small btn-danger" onclick="removeCurrentDoc()" title="Remover documentação">
+                <i class="fas fa-trash"></i> Remover
+            </button>
+        </div>
+        <% } %>
+
+        <input type="hidden" name="remove_doc" id="remove_doc" value="0">
+
+        <div class="doc-dropzone" id="dropzone" onclick="document.getElementById('docInput').click()">
+            <div class="doc-dropzone-content" id="dropzoneContent">
+                <div class="doc-dropzone-icon">📁</div>
+                <p><strong>Clique aqui ou arraste o arquivo</strong></p>
+                <p class="doc-dropzone-hint">.pdf, .zip ou .rar — máx. 25MB</p>
+            </div>
+            <div class="doc-dropzone-preview" id="dropzonePreview" style="display:none;">
+                <span class="doc-icon" id="previewIcon">📄</span>
+                <div>
+                    <strong id="previewName"></strong>
+                    <small id="previewSize" style="display:block; color:#888;"></small>
+                </div>
+                <button type="button" class="btn btn-small" onclick="clearFileSelection(event)" style="margin-left:auto; background:#888;">✕</button>
+            </div>
+        </div>
+        <input type="file" name="documentacao" id="docInput" accept=".pdf,.zip,.rar" style="display:none;">
+    </fieldset>
 
     <fieldset style="border: 1px solid #ddd; padding: 10px; margin-bottom: 15px; border-radius: 4px;">
         <legend>Configurações de E-mail (SMTP)</legend>
@@ -88,6 +129,101 @@
 <script>
     function execCmd(command, value = null) {
         document.execCommand(command, false, value);
+    }
+
+    // ── Document Upload Logic ──
+    const dropzone = document.getElementById('dropzone');
+    const docInput = document.getElementById('docInput');
+    const dropzoneContent = document.getElementById('dropzoneContent');
+    const dropzonePreview = document.getElementById('dropzonePreview');
+    const previewIcon = document.getElementById('previewIcon');
+    const previewName = document.getElementById('previewName');
+    const previewSize = document.getElementById('previewSize');
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function getFileIcon(name) {
+        if (name.endsWith('.pdf')) return '📄';
+        if (name.endsWith('.zip')) return '📦';
+        if (name.endsWith('.rar')) return '📦';
+        return '📎';
+    }
+
+    function showFilePreview(file) {
+        dropzoneContent.style.display = 'none';
+        dropzonePreview.style.display = 'flex';
+        previewIcon.textContent = getFileIcon(file.name.toLowerCase());
+        previewName.textContent = file.name;
+        previewSize.textContent = formatFileSize(file.size);
+    }
+
+    function clearFileSelection(e) {
+        if (e) e.stopPropagation();
+        docInput.value = '';
+        dropzoneContent.style.display = 'block';
+        dropzonePreview.style.display = 'none';
+    }
+
+    docInput.addEventListener('change', () => {
+        if (docInput.files.length > 0) {
+            const file = docInput.files[0];
+            if (file.size > 25 * 1024 * 1024) {
+                alert('Arquivo muito grande! Máximo permitido: 25MB');
+                docInput.value = '';
+                return;
+            }
+            showFilePreview(file);
+            // Hide current doc banner if exists (user is replacing it)
+            const currentDoc = document.getElementById('currentDoc');
+            if (currentDoc) currentDoc.style.display = 'none';
+        }
+    });
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+    });
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['pdf', 'zip', 'rar'].includes(ext)) {
+                alert('Formato não aceito. Use: .pdf, .zip ou .rar');
+                return;
+            }
+            if (file.size > 25 * 1024 * 1024) {
+                alert('Arquivo muito grande! Máximo permitido: 25MB');
+                return;
+            }
+            // Assign file to input
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            docInput.files = dt.files;
+            showFilePreview(file);
+            const currentDoc = document.getElementById('currentDoc');
+            if (currentDoc) currentDoc.style.display = 'none';
+        }
+    });
+
+    function removeCurrentDoc() {
+        document.getElementById('remove_doc').value = '1';
+        const currentDoc = document.getElementById('currentDoc');
+        if (currentDoc) {
+            currentDoc.innerHTML = '<div class="doc-current-info"><span class="doc-icon">🗑️</span><div><strong>Documentação será removida ao salvar</strong><small style="display:block; color:#c33;">Clique "Salvar Empresa" para confirmar a remoção</small></div></div>';
+            currentDoc.style.borderColor = '#c33';
+            currentDoc.style.background = '#fff5f5';
+        }
     }
 
     function testSMTP() {
@@ -146,6 +282,97 @@
     }
     .rte-toolbar button:hover {
         background: #e0e0e0;
+    }
+
+    /* ── Document Upload Styles ── */
+    .doc-upload-fieldset {
+        border: 2px solid #e0e7ef;
+        padding: 16px;
+        margin-bottom: 18px;
+        border-radius: 8px;
+        background: #f8fafc;
+    }
+    .doc-upload-fieldset legend {
+        font-weight: 600;
+        font-size: 1.05em;
+        padding: 0 8px;
+    }
+    .doc-hint {
+        font-size: 0.88em;
+        color: #64748b;
+        margin: 0 0 14px 0;
+        line-height: 1.5;
+    }
+    .doc-current {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        background: #eef7ee;
+        border: 1px solid #a3d9a5;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+    }
+    .doc-current-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .doc-icon {
+        font-size: 1.8em;
+        line-height: 1;
+    }
+    .doc-dropzone {
+        border: 2px dashed #b0bec5;
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        background: #fff;
+        min-height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .doc-dropzone:hover {
+        border-color: #2196F3;
+        background: #f0f7ff;
+    }
+    .doc-dropzone.dragover {
+        border-color: #1976D2;
+        background: #e3f2fd;
+        box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
+    }
+    .doc-dropzone-content {
+        pointer-events: none;
+    }
+    .doc-dropzone-icon {
+        font-size: 2.4em;
+        margin-bottom: 6px;
+    }
+    .doc-dropzone-content p {
+        margin: 4px 0;
+        color: #546e7a;
+    }
+    .doc-dropzone-hint {
+        font-size: 0.82em;
+        color: #90a4ae !important;
+    }
+    .doc-dropzone-preview {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        text-align: left;
+        pointer-events: auto;
+    }
+    .doc-dropzone-preview .doc-icon {
+        pointer-events: none;
+    }
+    .doc-dropzone-preview div {
+        pointer-events: none;
     }
 </style>
 <%- include('layout_footer') %>

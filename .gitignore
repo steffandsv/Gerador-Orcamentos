@@ -37,3 +37,6 @@ test.js
 test2.js
 convert.js
 prisma_err.log
+
+# Uploaded company documents
+uploads/

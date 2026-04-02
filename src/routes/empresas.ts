@@ -3,8 +3,40 @@ import { db } from '../db';
 import { empresas } from '../db/schema';
 import { eq, isNull } from 'drizzle-orm';
 import { logAudit } from '../lib/audit';
+import multer from 'multer';
+import path from 'node:path';
+import fs from 'node:fs';
 
 export const empresasRouter = Router();
+
+// ── Multer config for company documentation upload ──
+const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads', 'docs');
+
+const docStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+        cb(null, UPLOADS_DIR);
+    },
+    filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const uniqueName = `empresa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
+        cb(null, uniqueName);
+    },
+});
+
+const docUpload = multer({
+    storage: docStorage,
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['.pdf', '.zip', '.rar'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (allowed.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Tipo de arquivo não permitido: ${ext}. Aceitos: .pdf, .zip, .rar`));
+        }
+    },
+});
 
 // GET /empresas - List Companies (excluding soft-deleted)
 empresasRouter.get('/', async (req, res) => {
@@ -35,11 +67,11 @@ empresasRouter.get('/form', async (req, res) => {
     }
 });
 
-// POST /empresas/save - Save or update company
-empresasRouter.post('/save', async (req, res) => {
+// POST /empresas/save - Save or update company (with optional file upload)
+empresasRouter.post('/save', docUpload.single('documentacao'), async (req, res) => {
     try {
         const currentUser = res.locals.currentUser;
-        const payload = {
+        const payload: Record<string, any> = {
             nome: req.body.nome,
             documento: req.body.documento || null,
             endereco: req.body.endereco || null,
@@ -53,10 +85,28 @@ empresasRouter.post('/save', async (req, res) => {
             smtp_secure: req.body.smtp_secure || null,
         };
 
+        // Handle file upload
+        if (req.file) {
+            payload.doc_path = path.relative(path.join(__dirname, '..', '..'), req.file.path);
+            payload.doc_original_name = req.file.originalname;
+        }
+
+        // Handle document removal request
+        if (req.body.remove_doc === '1' && !req.file) {
+            payload.doc_path = null;
+            payload.doc_original_name = null;
+        }
+
         const id = req.body.id;
 
         if (id) {
             const existing = await db.select().from(empresas).where(eq(empresas.id, Number.parseInt(id)));
+
+            // Delete old doc file if uploading new one or removing
+            if ((req.file || req.body.remove_doc === '1') && existing[0]?.doc_path) {
+                const oldPath = path.join(__dirname, '..', '..', existing[0].doc_path);
+                try { fs.unlinkSync(oldPath); } catch { /* file may not exist */ }
+            }
 
             await db.update(empresas).set({
                 ...payload,
@@ -70,7 +120,7 @@ empresasRouter.post('/save', async (req, res) => {
                 action: 'update',
                 entity: 'empresa',
                 entityId: Number.parseInt(id),
-                details: `Empresa "${payload.nome}" atualizada`,
+                details: `Empresa "${payload.nome}" atualizada${req.file ? ' (doc atualizada)' : ''}`,
                 oldData: existing.length > 0 ? { nome: existing[0].nome, documento: existing[0].documento, email: existing[0].email } : null,
                 newData: { nome: payload.nome, documento: payload.documento, email: payload.email },
                 ipAddress: req.ip ?? null,
@@ -79,7 +129,7 @@ empresasRouter.post('/save', async (req, res) => {
             const [result] = await db.insert(empresas).values({
                 ...payload,
                 created_by: currentUser.id,
-            });
+            } as any);
 
             await logAudit({
                 userId: currentUser.id,
@@ -87,7 +137,7 @@ empresasRouter.post('/save', async (req, res) => {
                 action: 'create',
                 entity: 'empresa',
                 entityId: result.insertId,
-                details: `Empresa "${payload.nome}" criada`,
+                details: `Empresa "${payload.nome}" criada${req.file ? ' (com documentação)' : ''}`,
                 newData: { nome: payload.nome, documento: payload.documento, email: payload.email },
                 ipAddress: req.ip ?? null,
             });

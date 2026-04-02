@@ -5,6 +5,8 @@ import { eq, asc, desc, isNull, sql, and, inArray, lte } from 'drizzle-orm';
 import { logAudit } from '../lib/audit';
 import nodemailer from 'nodemailer';
 import multer from 'multer';
+import path from 'node:path';
+import fs from 'node:fs';
 
 export const pipelineRouter = Router();
 
@@ -1195,15 +1197,28 @@ async function processEmailQueue() {
                 const pdfBuffer = Buffer.from(item.pdf_data!, 'base64');
                 const safeCompanyName = nome.replace(/[^a-zA-Z0-9]/g, '_');
 
+                // Build attachments: PDF proposal + company documentation (if exists)
+                const attachments: any[] = [{
+                    filename: `orcamento_${safeCompanyName}.pdf`,
+                    content: pdfBuffer,
+                }];
+
+                if (company.doc_path) {
+                    const docFullPath = path.join(__dirname, '..', '..', company.doc_path);
+                    if (fs.existsSync(docFullPath)) {
+                        attachments.push({
+                            filename: company.doc_original_name || path.basename(docFullPath),
+                            content: fs.readFileSync(docFullPath),
+                        });
+                    }
+                }
+
                 await transporter.sendMail({
                     from: company.smtp_user,
                     to: item.recipient_email,
                     subject,
                     html,
-                    attachments: [{
-                        filename: `orcamento_${safeCompanyName}.pdf`,
-                        content: pdfBuffer,
-                    }],
+                    attachments,
                 });
 
                 // Success — update queue + activity
