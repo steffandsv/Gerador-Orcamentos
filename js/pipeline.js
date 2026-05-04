@@ -1026,34 +1026,87 @@
         document.getElementById('csvOverlay').style.display = 'none';
     };
 
+    function _parseCsvLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+                else { inQuotes = !inQuotes; }
+            } else if (ch === ';' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    }
+
+    function _csvLooksLikeCode(v) { return /^\d+$/.test(v) && v.length <= 10; }
+    function _csvCleanNum(v) { return v.replace(/[^\d.,]/g, '').replace(',', '.'); }
+
     window.importCsvFromOverlay = async function () {
         const csvText = document.getElementById('csvOverlayInput').value.trim();
         const status = document.getElementById('csvOverlayStatus');
         if (!csvText) { status.textContent = '⚠️ Cole o CSV primeiro'; return; }
 
-        const lines = csvText.split('\n').filter(l => l.trim());
+        const lines = csvText.split(/\r?\n/).filter(l => l.trim());
         const items = [];
         for (let li = 0; li < lines.length; li++) {
             const line = lines[li];
-            // Skip header row
+            // Skip header row (first line containing column labels)
             if (li === 0) {
                 const lower = line.toLowerCase();
                 if (lower.includes('desc') || lower.includes('quant') || lower.includes('cód') || lower.includes('cod') || lower.includes('valor') || lower.includes('pre')) continue;
             }
-            const parts = line.split(';').map(p => p.trim());
+            const parts = _parseCsvLine(line);
+            if (parts.length === 0 || !parts.some(p => p)) continue;
+
+            let codigo = '', descricao = '', valor_compra = '0', quantidade = '1';
+
             if (parts.length >= 4) {
-                items.push({ codigo: parts[0], descricao: parts[1], quantidade: parts[2] || '1', valor_venda: parts[3] });
+                // Código;"Descrição";Valor;Quantidade
+                codigo = parts[0];
+                descricao = parts[1];
+                valor_compra = _csvCleanNum(parts[2]) || '0';
+                quantidade = _csvCleanNum(parts[3]) || '1';
             } else if (parts.length === 3) {
-                // Could be Código;Descrição;Valor (no qty) or Descrição;Quantidade;Valor
-                if (/^\d+$/.test(parts[0]) && !/^\d+([.,]\d{1,2})?$/.test(parts[1])) {
-                    // Código;Descrição;Valor — quantity missing
-                    items.push({ codigo: parts[0], descricao: parts[1], quantidade: '1', valor_venda: parts[2] });
+                if (_csvLooksLikeCode(parts[0]) && parts[1] && !_csvLooksLikeCode(parts[1])) {
+                    // Código;"Descrição";Valor — quantity missing / sigilosa
+                    codigo = parts[0];
+                    descricao = parts[1];
+                    valor_compra = _csvCleanNum(parts[2]) || '0';
+                } else if (!_csvLooksLikeCode(parts[0])) {
+                    // "Descrição";Valor;Quantidade — no code
+                    descricao = parts[0];
+                    valor_compra = _csvCleanNum(parts[1]) || '0';
+                    quantidade = _csvCleanNum(parts[2]) || '1';
                 } else {
-                    items.push({ codigo: '', descricao: parts[0], quantidade: parts[1] || '1', valor_venda: parts[2] });
+                    // Fallback: Código;"Descrição";Valor
+                    codigo = parts[0];
+                    descricao = parts[1];
+                    valor_compra = _csvCleanNum(parts[2]) || '0';
                 }
             } else if (parts.length === 2) {
-                items.push({ codigo: '', descricao: parts[0], quantidade: '1', valor_venda: parts[1] });
+                if (_csvLooksLikeCode(parts[0]) && parts[1]) {
+                    // Código;"Descrição" — sem valor (sigiloso)
+                    codigo = parts[0];
+                    descricao = parts[1];
+                } else {
+                    // "Descrição";Valor
+                    descricao = parts[0];
+                    valor_compra = _csvCleanNum(parts[1]) || '0';
+                }
+            } else if (parts.length === 1) {
+                descricao = parts[0];
             }
+
+            if (!descricao) continue;
+            items.push({ codigo, descricao, quantidade, valor_compra });
         }
         if (items.length === 0) { status.textContent = '⚠️ Nenhum item válido'; return; }
 
@@ -1072,7 +1125,7 @@
         // Existing card — append to description
         if (!activeCardId) return;
         const existingDesc = document.getElementById('modalDescription').value || '';
-        const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.codigo ? `[${it.codigo}] ` : ''}${it.descricao} | Qtd: ${it.quantidade} | R$ ${it.valor_venda}`).join('\n')}`;
+        const csvNote = `\n\n---\n**Itens importados via CSV (${new Date().toLocaleString('pt-BR')}):**\n${items.map((it, i) => `${i + 1}. ${it.codigo ? `[${it.codigo}] ` : ''}${it.descricao} | Qtd: ${it.quantidade}${it.valor_compra && it.valor_compra !== '0' ? ` | R$ ${it.valor_compra}` : ''}`).join('\n')}`;
         document.getElementById('modalDescription').value = existingDesc + csvNote;
         autoSaveDescription();
 

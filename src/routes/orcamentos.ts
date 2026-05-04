@@ -100,9 +100,9 @@ orcamentosRouter.post('/save', async (req, res) => {
         const currentUser = res.locals.currentUser;
         const payload = {
             titulo: req.body.titulo,
-            empresa1_id: Number.parseInt(req.body.empresa1_id),
-            empresa2_id: Number.parseInt(req.body.empresa2_id),
-            empresa3_id: Number.parseInt(req.body.empresa3_id),
+            empresa1_id: req.body.empresa1_id ? Number.parseInt(req.body.empresa1_id) : null,
+            empresa2_id: req.body.empresa2_id ? Number.parseInt(req.body.empresa2_id) : null,
+            empresa3_id: req.body.empresa3_id ? Number.parseInt(req.body.empresa3_id) : null,
             template1_id: Number.parseInt(req.body.template1_id) || 1,
             template2_id: Number.parseInt(req.body.template2_id) || 2,
             template3_id: Number.parseInt(req.body.template3_id) || 3,

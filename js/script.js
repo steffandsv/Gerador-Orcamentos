@@ -806,39 +806,42 @@ document.addEventListener('DOMContentLoaded', function() {
                     let codigo = '', desc = '', qty = '1', vCompra = '0';
 
                     if (parts.length >= 4) {
-                        // Format: Código;Descrição;Quantidade;Valor
+                        // Format: Código;"Descrição";Valor;Quantidade
                         codigo = parts[0].trim();
                         desc = parts[1].trim();
-                        qty = cleanNumber(parts[2]) || '1';
-                        vCompra = cleanNumber(parts[3]) || '0';
+                        vCompra = cleanNumber(parts[2]) || '0';
+                        qty = cleanNumber(parts[3]) || '1';
                     } else if (parts.length === 3) {
-                        // Could be: Código;Descrição;Valor  OR  Descrição;Quantidade;Valor
+                        // Código;"Descrição";Valor  OR  "Descrição";Valor;Quantidade
                         if (looksLikeCode(parts[0]) && !looksLikePrice(parts[1])) {
-                            // Código;Descrição;Valor (quantity missing)
+                            // Código;"Descrição";Valor (quantity missing / sigilosa)
                             codigo = parts[0].trim();
                             desc = parts[1].trim();
+                            vCompra = cleanNumber(parts[2]) || '0';
                             qty = '1';
-                            vCompra = cleanNumber(parts[2]) || '0';
                         } else if (!looksLikeCode(parts[0])) {
-                            // Descrição;Quantidade;Valor
+                            // "Descrição";Valor;Quantidade (no code)
                             desc = parts[0].trim();
-                            qty = cleanNumber(parts[1]) || '1';
-                            vCompra = cleanNumber(parts[2]) || '0';
+                            vCompra = cleanNumber(parts[1]) || '0';
+                            qty = cleanNumber(parts[2]) || '1';
                         } else {
-                            // Fallback: treat as Código;Descrição;Valor
+                            // Fallback: Código;"Descrição";Valor
                             codigo = parts[0].trim();
                             desc = parts[1].trim();
                             vCompra = cleanNumber(parts[2]) || '0';
                         }
                     } else if (parts.length === 2) {
-                        // Descrição;Valor or Código;Descrição
-                        if (looksLikePrice(parts[1])) {
-                            desc = parts[0].trim();
-                            vCompra = cleanNumber(parts[1]) || '0';
-                        } else {
+                        // "Descrição";Valor  OR  Código;"Descrição"
+                        if (looksLikeCode(parts[0]) && !looksLikePrice(parts[1])) {
                             codigo = parts[0].trim();
                             desc = parts[1].trim();
+                        } else {
+                            desc = parts[0].trim();
+                            vCompra = cleanNumber(parts[1]) || '0';
                         }
+                    } else if (parts.length === 1) {
+                        // Apenas descrição
+                        desc = parts[0].trim();
                     }
 
                     if (!desc) return;
