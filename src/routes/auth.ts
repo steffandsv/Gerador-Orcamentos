@@ -18,7 +18,7 @@ authRouter.get('/login', (req, res) => {
 // POST /login
 authRouter.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body || {};
 
     if (!username || !password) {
       return res.render('login', { error: 'Preencha usuário e senha.' });

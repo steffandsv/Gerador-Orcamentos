@@ -420,9 +420,9 @@
             <button class="card-modal-close" onclick="closeCsvOverlay()"><i class="fas fa-times"></i></button>
         </div>
         <div class="card-modal-body" style="flex-direction:column; padding:20px 24px;">
-            <p style="font-size:0.85rem; color:#64748b; margin:0 0 12px;">Cole os dados CSV abaixo. Formato: <code>Código;Descrição;Quantidade;Valor</code> (uma linha por item).</p>
+            <p style="font-size:0.85rem; color:#64748b; margin:0 0 12px;">Cole os dados CSV abaixo. Formato: <code>Código;"Descrição";Valor;Quantidade</code> — valor e quantidade são opcionais.</p>
             <textarea id="csvOverlayInput" class="modal-textarea" rows="8"
-                placeholder="Material de Limpeza;100;5.50&#10;Papel A4;50;22.90&#10;..."></textarea>
+                placeholder='1;"Material de Limpeza Multiuso 500ml";5.50;100&#10;2;"Resma de Papel A4 75g 500 folhas";22.90;50&#10;3;"Grampeador de Mesa 26/6"'></textarea>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
                 <span class="csv-status" id="csvOverlayStatus"></span>
                 <button class="btn-pipeline btn-new" onclick="importCsvFromOverlay()">

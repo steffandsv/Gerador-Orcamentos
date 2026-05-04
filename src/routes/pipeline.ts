@@ -197,8 +197,8 @@ pipelineRouter.post('/api/pipeline/cards', async (req: Request, res: Response) =
                     codigo: item.codigo ? Number(item.codigo) || null : null,
                     descricao: item.descricao || 'Item sem descrição',
                     quantidade: Number(item.quantidade) || 1,
-                    valor_compra: 0,
-                    valor_venda: Number(item.valor_venda) || 0,
+                    valor_compra: Number(item.valor_compra) || 0,
+                    valor_venda: item.valor_venda ? Number(item.valor_venda) || null : null,
                 } as any);
             }
         }
@@ -1092,18 +1092,53 @@ pipelineRouter.post('/api/pipeline/cards/:id/send-emails', queuePdfFields, async
 });
 
 // ── Email Queue Processor — runs every 15 seconds ──
+
+// Re-entry guard: prevents concurrent runs when async ticks overlap
+let _emailQueueRunning = false;
+
+// On startup, reset items stuck in 'processing' (e.g. server crashed mid-send)
+db.update(email_queue)
+    .set({ status: 'pending' })
+    .where(eq(email_queue.status, 'processing' as any))
+    .catch((e: any) => console.error('[EmailQueue] Startup recovery error:', e));
+
 async function processEmailQueue() {
+    if (_emailQueueRunning) return;
+    _emailQueueRunning = true;
     try {
         const now = new Date();
 
-        // Find pending emails that are ready to send
-        const pendingEmails = await db.select()
+        // Step 1: find candidate IDs (status=pending, scheduled_at <= now)
+        const candidates = await db.select({ id: email_queue.id })
             .from(email_queue)
             .where(and(
                 eq(email_queue.status, 'pending'),
                 lte(email_queue.scheduled_at, now),
             ))
             .limit(5);
+
+        if (candidates.length === 0) return;
+
+        // Step 2: atomically claim each item by flipping status pending→processing.
+        // If affectedRows=0, another concurrent tick already claimed it — skip it.
+        const claimedIds: number[] = [];
+        for (const c of candidates) {
+            const [header] = await db.update(email_queue)
+                .set({ status: 'processing' as any })
+                .where(and(
+                    eq(email_queue.id, c.id),
+                    eq(email_queue.status, 'pending'),
+                ));
+            if ((header as any).affectedRows > 0) {
+                claimedIds.push(c.id);
+            }
+        }
+        if (claimedIds.length === 0) return;
+
+        // Step 3: fetch full rows only for items we successfully claimed
+        const pendingEmails = await db.select()
+            .from(email_queue)
+            .where(inArray(email_queue.id, claimedIds));
 
         for (const item of pendingEmails) {
             try {
@@ -1257,6 +1292,8 @@ async function processEmailQueue() {
         }
     } catch (e) {
         console.error('[EmailQueue] Processor error:', e);
+    } finally {
+        _emailQueueRunning = false;
     }
 }
 
